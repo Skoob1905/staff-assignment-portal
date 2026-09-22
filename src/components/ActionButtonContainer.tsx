@@ -1,0 +1,45 @@
+import { useAuth } from "../context/AuthProvider";
+import { AgenciesButton } from "./ui/AgenciesButton";
+import { AssignButton } from "./ui/AssignButton";
+import { DeleteButton } from "./ui/DeleteButton";
+import { SendLinkButton } from "./ui/SendLinkButton";
+import { TagsButton } from "./ui/TagsButton";
+import { UnassignButton } from "./ui/UnassignButton";
+
+interface ActionButtonContainerProps {
+  handleDelete?: () => void;
+  handleUnassign?: () => void;
+  handleTags?: () => void;
+  handleAgencies?: () => void;
+  handleAssign?: () => void;
+  handleSendLink?: () => void;
+}
+
+export const ActionButtonContainer = ({
+  handleDelete,
+  handleUnassign,
+  handleTags,
+  handleAgencies,
+  handleAssign,
+  handleSendLink,
+}: ActionButtonContainerProps) => {
+  const { role } = useAuth();
+
+  if (role !== "super") return null;
+
+  return (
+    <div
+      className="animate-cascade"
+      style={{ animationDelay: "100ms" }}
+    >
+      <div className="mt-3 flex items-center gap-2 border-t border-zinc-100 pt-3">
+        {handleAgencies && <AgenciesButton onClick={handleAgencies} />}
+        {handleTags && <TagsButton onClick={handleTags} />}
+        {handleUnassign && <UnassignButton onClick={handleUnassign} />}
+        {handleAssign && <AssignButton onClick={handleAssign} />}
+        {handleSendLink && <SendLinkButton onClick={handleSendLink} />}
+        {handleDelete && <DeleteButton onClick={handleDelete} />}
+      </div>
+    </div>
+  );
+};

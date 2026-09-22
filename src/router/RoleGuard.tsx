@@ -21,10 +21,10 @@ export const RoleGuard = ({ role }: { role: UserRole | "authenticated" }) => {
   if (role === "authenticated") return <Outlet />;
 
   if (appUser.role !== role) {
-    if (role === "admin") {
+    if (role === "admin" || role === "super" || role === "worker") {
       return <Forbidden />;
     }
-    return <Navigate to="/staff" replace />;
+    return <Navigate to="/staff?page=1&size=10" replace />;
   }
 
   return <Outlet />;

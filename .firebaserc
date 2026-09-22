@@ -1,7 +1,9 @@
 {
   "projects": {
-    "default": "handysign-ab77f",
-    "prod": "handysign-ab77f",
-    "dev": "handysign-dev"
-  }
+    "development": "mdsce-dev",
+    "production": "mdsce-prod",
+    "prod": "mdsce-prod"
+  },
+  "targets": {},
+  "etags": {}
 }

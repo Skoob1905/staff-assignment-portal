@@ -1,33 +1,44 @@
-import {
-  type ElementType,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
-import { httpsCallable } from "firebase/functions";
+import { type ElementType, useCallback, useEffect, useState } from "react";
 import {
   Building2,
   Clock,
-  FileSignature,
-  FileText,
-  FileUser,
+  FolderOpen,
+  Receipt,
+  ScrollText,
   Users,
 } from "lucide-react";
 import { AddModal } from "../components/AddModal";
+import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileDrop } from "../components/FileDrop";
-import { PreviewModal } from "../components/PreviewModal";
-import { CVUploadModal } from "../components/CVUploadModal";
+import {
+  MultipleFileUploadModal,
+  PreviewModal,
+  type SummaryItem,
+} from "../components/modals";
 import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { functions } from "../services/firebase";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { readCvFile, type CvFile } from "../utils/cvUpload";
+import { callBulkUploadPayslips } from "../services/payslipService";
 import {
-  hasNIColumn,
-  hasBusinessNameColumn,
+  callImportStaffCsv,
+  uploadCsvToStorage,
+} from "../services/staffUploadService";
+import { editFileName } from "../utils/fileUpload/editFileName";
+import { checkDuplicatePayslip } from "../utils/payslipDuplicateCheck";
+import { db, functions } from "../services/firebase";
+import { httpsCallable } from "firebase/functions";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import type { PayslipFile, StaffCsvRow } from "../types/domain";
+import { toast_mapper, ToastType } from "../config/toast";
+import {
+  hasAgencyRefColumn,
+  hasClientRefColumn,
 } from "../utils/keyHeaderNormalisation";
-import type { BulkStaff } from "../types/domain";
+import { readPayslipFile } from "../utils/readPayslipFile";
+import { getColumns, staffColumns } from "../utils/fileUpload/columns";
+import { matchStaffRow } from "../utils/fileUpload/staffMatch";
+import { FileCleaner, type CleanedFile } from "../utils/cleanFile";
+import * as XLSX from "xlsx";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
@@ -54,6 +65,20 @@ function parseCsvHeaders(text: string): string[] {
   return result;
 }
 
+async function readXlsxHeaders(file: File): Promise<string[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!sheet) return [];
+  const firstRow = XLSX.utils.sheet_to_json<
+    Array<string | number | boolean | null | undefined>
+  >(sheet, { header: 1, blankrows: false }).flatMap((r) => (Array.isArray(r) ? r : []))[0];
+  if (!Array.isArray(firstRow)) return [];
+  return firstRow.map((c) =>
+    c === null || c === undefined ? "" : String(c).trim(),
+  );
+}
+
 interface UploadType {
   id: string;
   icon: ElementType;
@@ -65,54 +90,65 @@ interface UploadType {
   multiple?: boolean;
 }
 
-const ADMIN_TYPES: UploadType[] = [
+const SUPER_TYPES: UploadType[] = [
   {
     id: "staff",
     icon: Users,
     title: "Staff",
     description: "Bulk import your staff",
     color: "#4A90D9",
-    acceptedFiles: ".csv",
+    acceptedFiles: ".csv,.xlsx",
+    fileLimit: "Max 2MB",
+  },
+  {
+    id: "agencies",
+    icon: Building2,
+    title: "Agencies",
+    description: "Bulk import agencies",
+    color: "#34A853",
+    acceptedFiles: ".csv,.xlsx",
     fileLimit: "Max 2MB",
   },
   {
     id: "clients",
     icon: Building2,
     title: "Clients",
-    description: "Bulk import your clients",
-    color: "#34A853",
-    acceptedFiles: ".csv",
+    description: "Bulk import clients",
+    color: "#9C27B0",
+    acceptedFiles: ".csv,.xlsx",
     fileLimit: "Max 2MB",
   },
   {
-    id: "contracts",
-    icon: FileSignature,
-    title: "Contracts",
-    description: "Upload a contract against a client",
+    id: "documents",
+    icon: FolderOpen,
+    title: "Documents",
+    description: "Upload a staff document",
     color: "#FB8C00",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
   },
   {
     id: "invoices",
-    icon: FileText,
+    icon: Receipt,
     title: "Invoices",
-    description: "Upload an invoice a client to pay",
-    color: "#E91E63",
+    description: "Upload an invoice for your client.",
+    color: "#7C3AED",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
   },
   {
-    id: "cvs",
-    icon: FileUser,
-    title: "CVs",
-    description: "Bulk upload your staffs CV's",
-    color: "#AB47BC",
-    acceptedFiles: ".pdf,.docx",
-    fileLimit: "Max 2MB per file",
+    id: "payslips",
+    icon: ScrollText,
+    title: "Payslips",
+    description: "Upload payslip(s) for staff",
+    color: "#E65100",
+    acceptedFiles: ".pdf",
+    fileLimit: "Max 2MB each",
     multiple: true,
   },
 ];
+
+const ADMIN_TYPES: UploadType[] = [];
 
 const CLIENT_TYPES: UploadType[] = [
   {
@@ -121,118 +157,337 @@ const CLIENT_TYPES: UploadType[] = [
     title: "Timesheets",
     description: "Upload your timesheet",
     color: "#005F57",
-    acceptedFiles: ".csv",
+    acceptedFiles: ".csv,.xlsx",
     fileLimit: "Max 2MB",
   },
 ];
 
-export const UploadPage = () => {
+export const Upload = () => {
   useEffect(() => {
     document.title = "Upload";
   }, []);
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+  const isSuper = appUser?.role === "super";
   const isAdmin = appUser?.role === "admin";
-  const types = isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
+  const types = isSuper ? SUPER_TYPES : isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
 
-  const [cvUploading, setCvUploading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalFile, setAddModalFile] = useState<File | null>(null);
-  const [addModalCsvType, setAddModalCsvType] = useState<"staff" | "agency" | "timesheet">(
-    "staff",
-  );
+  const [addModalCsvType, setAddModalCsvType] = useState<
+    "staff" | "agency" | "client" | "timesheet"
+  >("staff");
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewMode, setPreviewMode] = useState<"invoice" | "contract">(
-    "invoice",
-  );
+  const [previewMode, setPreviewMode] = useState<
+    "invoice" | "contract" | "payslip" | "document"
+  >("invoice");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  const [cvFiles, setCvFiles] = useState<CvFile[]>([]);
-  const [showCvModal, setShowCvModal] = useState(false);
+  const [payslipFiles, setPayslipFiles] = useState<PayslipFile[]>([]);
+  const [showPayslipModal, setShowPayslipModal] = useState(false);
+  const [uploadingPayslips, setUploadingPayslips] = useState(false);
 
-  const { items: staffList } = usePaginatedRecords<BulkStaff>({
-    indexName: "staff_name_desc",
-    agencyId: appUser?.agencyId ?? "",
-    hitsPerPage: 10000,
-  });
+  const [staffFile, setStaffFile] = useState<CleanedFile | null>(null);
+  const [staffRows, setStaffRows] = useState<StaffCsvRow[]>([]);
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [uploadingStaff, setUploadingStaff] = useState(false);
+  const [staffAssignedToId, setStaffAssignedToId] = useState("");
+  const [staffAssignedToName, setStaffAssignedToName] = useState("");
 
+  const handlePayslips = useCallback(
+    async (files: File[]) => {
+      if (files.length === 1) {
+        const file = files[0];
+        if (file.size > MAX_FILE_SIZE) {
+          toast({
+            title: "File too large",
+            description: "Payslip must be 2MB or less.",
+            variant: "error",
+          });
+          return;
+        }
+        setPreviewFile(file);
+        setPreviewMode("payslip");
+        setShowPreviewModal(true);
+        return;
+      }
 
-  const handleCvUpload = useCallback(async () => {
-    const valid = cvFiles.filter((f) => f.match && !f.error && f.base64);
-    if (valid.length === 0) return;
+      const results = await Promise.all(files.map((f) => readPayslipFile(f)));
 
-    setCvUploading(true);
+      const fetchExistingNames = async (
+        workerRef: string,
+      ): Promise<string[]> => {
+        const snapshot = await getDocs(
+          query(
+            collection(db, "payslips"),
+            where("userId", "==", workerRef.toUpperCase()),
+          ),
+        );
+        return snapshot.docs.map(
+          (doc) => (doc.data() as { fileName?: string }).fileName ?? "",
+        );
+      };
+
+      const checkItems = results
+        .filter((r) => r.workerRef)
+        .map((r) => ({
+          workerRef: r.workerRef,
+          displayName: editFileName(r.file.name),
+        }));
+
+      const checked = await checkDuplicatePayslip(
+        checkItems,
+        fetchExistingNames,
+      );
+
+      const merged = results.map((r) => ({
+        ...r,
+        isDuplicate: checked.some(
+          (c) =>
+            c.workerRef === r.workerRef &&
+            c.displayName === editFileName(r.file.name) &&
+            c.isDuplicate,
+        ),
+      }));
+
+      setPayslipFiles(merged);
+      setShowPayslipModal(true);
+    },
+    [toast],
+  );
+
+  const handleStaffFile = useCallback(
+    async (file: File) => {
+      const cleaned = await new FileCleaner().cleanFile(file);
+      if (!cleaned.hasHeaders) {
+        toast(toast_mapper[ToastType.NO_COLUMN_HEADERS]);
+        return;
+      }
+      if (!cleaned.found.ref) {
+        toast(toast_mapper[ToastType.NO_REF_FOUND]);
+        return;
+      }
+      if (!cleaned.found.forename) {
+        toast(toast_mapper[ToastType.NO_FORENAME_FOUND]);
+        return;
+      }
+      if (!cleaned.found.surname) {
+        toast(toast_mapper[ToastType.NO_SURNAME_FOUND]);
+        return;
+      }
+      if (!cleaned.found.email) {
+        toast(toast_mapper[ToastType.NO_EMAIL_FOUND]);
+        return;
+      }
+
+      const matchedRows: StaffCsvRow[] = await Promise.all(
+        cleaned.rows.map(async (row) => {
+          const match = await matchStaffRow(
+            row["ref"] ?? "",
+            row["forename"] ?? "",
+            row["surname"] ?? "",
+          );
+          return {
+            ref: row["ref"] ?? "",
+            forename: row["forename"] ?? "",
+            surname: row["surname"] ?? "",
+            email: row["email"] ?? "",
+            status: match.status,
+            existingName: match.existingName,
+            existingEmail: match.existingEmail,
+            data: row,
+          };
+        }),
+      );
+
+      setStaffFile(cleaned);
+      setStaffRows(matchedRows);
+      setShowStaffModal(true);
+    },
+    [toast],
+  );
+
+  const handlePayslipUpload = async () => {
+    const eligible = payslipFiles.filter(
+      (f) => !f.error && !f.isDuplicate && f.status !== "missing" && f.base64,
+    );
+    if (eligible.length === 0) return;
+
+    setUploadingPayslips(true);
+
+    toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_START](eligible.length));
+
+    const entries = eligible.map((f) => ({
+      fileBase64: f.base64,
+      fileName: editFileName(f.file.name),
+      userId: f.workerRef.toUpperCase(),
+      agencyId: f.agencyId ?? "",
+    }));
 
     try {
-      const fn = httpsCallable(functions, "uploadStaffCvs");
-      await fn({
-        cvs: valid.map((f) => ({
-          staffId: f.match!.id,
-          fileName: f.file.name,
-          fileBase64: f.base64,
-        })),
-      });
+      const { results, queued } = await callBulkUploadPayslips(entries);
 
-      toast({
-        title: "CVs uploaded",
-        description: `${valid.length} CV(s) uploaded successfully`,
-        variant: "success",
-      });
+      setShowPayslipModal(false);
+      setPayslipFiles([]);
 
-      setCvFiles([]);
-      setShowCvModal(false);
+      const succeeded = results.filter((r) => r.success).length;
+      const failed = results.length - succeeded;
+
+      if (failed === 0) {
+        toast(
+          toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
+            succeeded,
+            results.length,
+          ),
+        );
+      } else {
+        toast(
+          toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
+            succeeded,
+            results.length,
+            failed,
+          ),
+        );
+      }
+
+      if (queued > 0) {
+        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
+      }
+
+      setUploadingPayslips(false);
     } catch {
-      toast({
-        title: "Upload failed",
-        description: "Failed to upload CVs. Please try again.",
-        variant: "error",
-      });
-    } finally {
-      setCvUploading(false);
+      toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));
+      setUploadingPayslips(false);
     }
-  }, [cvFiles, toast]);
+  };
+
+  const handleStaffUpload = async () => {
+    if (!staffFile || !appUser) return;
+
+    const newRows = staffRows.filter((r) => r.status === "New");
+    if (newRows.length === 0) return;
+
+    setUploadingStaff(true);
+
+    toast(
+      toast_mapper[ToastType.PAYSLIP_UPLOAD_START](newRows.length),
+    );
+
+    try {
+      const { downloadUrl } = await uploadCsvToStorage(
+        staffFile.rawFile,
+        appUser.agencyId,
+      );
+
+      const data = await callImportStaffCsv(
+        newRows.map((r) => r.data),
+        staffFile.fileName,
+        downloadUrl,
+        staffAssignedToId || undefined,
+        staffAssignedToName || undefined,
+      );
+
+      setShowStaffModal(false);
+      setStaffRows([]);
+      setStaffFile(null);
+      setStaffAssignedToId("");
+      setStaffAssignedToName("");
+
+      if (data.added === 0 && data.duplicates > 0) {
+        toast(toast_mapper[ToastType.IMPORT_ALL_DUPLICATES](data.duplicates));
+      } else {
+        toast(
+          toast_mapper[ToastType.IMPORT_SUCCESS](
+            data.added,
+            "staff",
+            "staff",
+            data.duplicates,
+          ),
+        );
+      }
+
+      if (Array.isArray(data.emails) && data.emails.length > 0) {
+        const emailCallable = httpsCallable(functions, "sendImportEmails");
+        const emailResult = await emailCallable({
+          emails: data.emails,
+          type: "worker",
+        });
+        const { queued } = emailResult.data as { queued: number };
+        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
+      }
+
+      setUploadingStaff(false);
+    } catch (error: unknown) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message?: string }).message === "string"
+          ? (error as { message: string }).message
+          : "Upload failed. Please try again.";
+      toast(toast_mapper[ToastType.UPLOAD_FAILED](message));
+      setUploadingStaff(false);
+    }
+  };
 
   const handleFileSelect = async (file: File, typeId: string) => {
-    if (typeId === "staff" || typeId === "clients") {
+    if (typeId === "staff" || typeId === "agencies" || typeId === "clients") {
+      const typeLabel =
+        typeId === "staff"
+          ? "Staff"
+          : typeId === "agencies"
+            ? "Agency"
+            : "Client";
       if (file.size > MAX_FILE_SIZE) {
         toast({
           title: "File too large",
-          description: `${typeId === "staff" ? "Staff" : "Client"} CSV must be 2MB or less.`,
+          description: `${typeLabel} file must be 2MB or less.`,
           variant: "error",
         });
         return;
       }
 
-      const text = await file.text();
-      const headers = parseCsvHeaders(text);
+      const isXlsx = file.name.toLowerCase().endsWith(".xlsx");
+      const headers = isXlsx
+        ? await readXlsxHeaders(file)
+        : parseCsvHeaders(await file.text());
 
       if (typeId === "staff") {
-        if (!hasNIColumn(headers)) {
-          toast({
-            title: "Invalid Staff Upload",
-            description:
-              "No NI Number column found. Ensure your CSV has a column like 'NI Number', 'NINO', or 'National Insurance Number'.",
-            variant: "error",
-          });
+        if (
+          !file.name.toLowerCase().endsWith(".csv") &&
+          !file.name.toLowerCase().endsWith(".xlsx")
+        ) {
+          toast(toast_mapper[ToastType.INVALID_FILE]);
           return;
         }
-        setAddModalFile(file);
-        setAddModalCsvType("staff");
-        setShowAddModal(true);
-      } else {
-        if (!hasBusinessNameColumn(headers)) {
+        await handleStaffFile(file);
+      } else if (typeId === "agencies") {
+        if (!hasAgencyRefColumn(headers)) {
           toast({
-            title: "Invalid Client Upload",
+            title: "Invalid Agency Upload",
             description:
-              "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
+              "No Ref column found. Ensure your CSV has a column like 'Ref' or 'Reference'.",
             variant: "error",
           });
           return;
         }
         setAddModalFile(file);
         setAddModalCsvType("agency");
+        setShowAddModal(true);
+      } else {
+        if (!hasClientRefColumn(headers)) {
+          toast({
+            title: "Invalid Client Upload",
+            description:
+              "No Ref column found. Ensure your CSV has a column like 'Ref' or 'Reference'.",
+            variant: "error",
+          });
+          return;
+        }
+        setAddModalFile(file);
+        setAddModalCsvType("client");
         setShowAddModal(true);
       }
     } else if (typeId === "timesheets") {
@@ -288,19 +543,86 @@ export const UploadPage = () => {
       setPreviewFile(file);
       setPreviewMode("invoice");
       setShowPreviewModal(true);
+    } else if (typeId === "documents") {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "File too large",
+          description: "Document must be 2MB or less.",
+          variant: "error",
+        });
+        return;
+      }
+      setPreviewFile(file);
+      setPreviewMode("document");
+      setShowPreviewModal(true);
     }
   };
 
-  const handleFilesSelect = useCallback(
-    async (files: File[]) => {
-      const results = await Promise.all(
-        files.map((file) => readCvFile(file, staffList)),
-      );
-      setCvFiles((prev) => [...prev, ...results]);
-      setShowCvModal(true);
+  const matchedCount = payslipFiles.filter(
+    (f) => f.status === "matched" && !f.error && !f.isDuplicate,
+  ).length;
+  const wrongInfoCount = payslipFiles.filter(
+    (f) => f.status === "wrong info" && !f.error && !f.isDuplicate,
+  ).length;
+  const duplicateCount = payslipFiles.filter(
+    (f) => f.isDuplicate && !f.error,
+  ).length;
+  const missingCount = payslipFiles.filter(
+    (f) => f.status === "missing" && !f.error,
+  ).length;
+  const uploadableCount = payslipFiles.filter(
+    (f) => !f.error && !f.isDuplicate && f.status !== "missing" && f.base64,
+  ).length;
+
+  const payslipSummaryItems: SummaryItem[] = [
+    { label: "Matched", count: matchedCount, className: "text-green-600" },
+    {
+      label: "Wrong Info",
+      count: wrongInfoCount,
+      className: "text-orange-500",
     },
-    [staffList],
-  );
+    ...(duplicateCount > 0
+      ? [
+          {
+            label: "Duplicates",
+            count: duplicateCount,
+            className: "text-purple-600",
+          },
+        ]
+      : []),
+    { label: "Missing", count: missingCount, className: "text-red-600" },
+  ];
+
+  const staffNewCount = staffRows.filter((r) => r.status === "New").length;
+  const staffDiffInfoCount = staffRows.filter(
+    (r) => r.status === "different info",
+  ).length;
+  const staffDuplicateCount = staffRows.filter(
+    (r) => r.status === "duplicate",
+  ).length;
+  const staffUploadableCount = staffNewCount;
+
+  const staffSummaryItems: SummaryItem[] = [
+    { label: "New", count: staffNewCount, className: "text-green-600" },
+    ...(staffDiffInfoCount > 0
+      ? [
+          {
+            label: "Different Info",
+            count: staffDiffInfoCount,
+            className: "text-orange-500",
+          },
+        ]
+      : []),
+    ...(staffDuplicateCount > 0
+      ? [
+          {
+            label: "Duplicates",
+            count: staffDuplicateCount,
+            className: "text-purple-600",
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -327,11 +649,11 @@ export const UploadPage = () => {
                     : (file) => handleFileSelect(file, type.id)
                 }
                 onFilesSelect={
-                  type.multiple
-                    ? (files) => {
-                        void handleFilesSelect(files);
-                      }
-                    : undefined
+                  type.id === "payslips"
+                    ? handlePayslips
+                    : type.multiple
+                      ? (_files: File[]) => undefined
+                      : undefined
                 }
               />
             </div>
@@ -350,14 +672,18 @@ export const UploadPage = () => {
             ? "recordTimesheetUpload"
             : addModalCsvType === "staff"
               ? "importStaffCsv"
-              : "importAgencyCsv"
+              : addModalCsvType === "agency"
+                ? "importAgencyCsv"
+                : "importClientCsv"
         }
         storagePath={
           addModalCsvType === "timesheet"
             ? "timesheet_imports"
             : addModalCsvType === "staff"
-              ? "staff_imports"
-              : "agency_imports"
+              ? "staff"
+              : addModalCsvType === "agency"
+                ? "agencies"
+                : "clients"
         }
         itemLabel={
           addModalCsvType === "timesheet"
@@ -394,17 +720,50 @@ export const UploadPage = () => {
         }}
       />
 
-      <CVUploadModal
-        open={showCvModal}
-        cvFiles={cvFiles}
-        cvUploading={cvUploading}
-        onOpenChange={(open) => {
-          if (!cvUploading) {
-            setShowCvModal(open);
-            if (!open) setCvFiles([]);
-          }
-        }}
-        onUpload={handleCvUpload}
+      <MultipleFileUploadModal
+        open={showPayslipModal}
+        onOpenChange={setShowPayslipModal}
+        title="Upload Payslips"
+        itemLabel="Payslip"
+        files={payslipFiles}
+        columns={getColumns("payslip")}
+        summaryItems={payslipSummaryItems}
+        uploadableCount={uploadableCount}
+        getFileName={(f) => f.file.name}
+        isError={(f) => !!(f.error || f.status === "missing")}
+        onUpload={handlePayslipUpload}
+        displayTotal={payslipFiles.length - duplicateCount}
+        loading={uploadingPayslips}
+      />
+
+      <MultipleFileUploadModal
+        open={showStaffModal}
+        onOpenChange={setShowStaffModal}
+        title="Upload Staff"
+        itemLabel="Record"
+        files={staffRows}
+        columns={staffColumns}
+        summaryItems={staffSummaryItems}
+        uploadableCount={staffUploadableCount}
+        getFileName={(r) => `${r.ref}-${r.forename}-${r.surname}`}
+        isError={() => false}
+        onUpload={handleStaffUpload}
+        loading={uploadingStaff}
+        footerExtra={
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium sm:text-sm">Auto-assign</span>
+            <AgenciesDropdown
+              value={staffAssignedToId}
+              onChange={(id, name) => {
+                setStaffAssignedToId(id);
+                setStaffAssignedToName(name);
+              }}
+              disabled={uploadingStaff}
+              placeholder="No Assigned Agency"
+              className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs sm:text-sm"
+            />
+          </div>
+        }
       />
     </div>
   );

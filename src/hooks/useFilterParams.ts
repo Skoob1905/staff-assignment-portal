@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import type { StaffFilters } from "../types/domain";
+import type { LoginStatusValue, StaffFilters } from "../types/domain";
 import { emptyFilters } from "../types/domain";
 
 const filterMemory = new Map<string, StaffFilters>();
 
 function hasParams(searchParams: URLSearchParams): boolean {
-  return !!(searchParams.get("name") || searchParams.get("tags") || searchParams.get("clients") || searchParams.get("types"));
+  return !!(searchParams.get("name") || searchParams.get("tags") || searchParams.get("agencies") || searchParams.get("types") || searchParams.get("loginStatus"));
 }
 
-function filtersToParams(
+export function filtersToParams(
   params: URLSearchParams,
   filters: StaffFilters,
 ): URLSearchParams {
@@ -17,22 +17,31 @@ function filtersToParams(
   else params.delete("name");
   if (filters.tagIds.length > 0) params.set("tags", filters.tagIds.join(","));
   else params.delete("tags");
-  if (filters.agencyIds.length > 0) params.set("clients", filters.agencyIds.join(","));
-  else params.delete("clients");
+  if (filters.agencyIds.length > 0) params.set("agencies", filters.agencyIds.join(","));
+  else params.delete("agencies");
   if (filters.typeIds.length > 0) params.set("types", filters.typeIds.join(","));
   else params.delete("types");
+  if (filters.loginStatusFilter && filters.loginStatusFilter !== "all") params.set("loginStatus", filters.loginStatusFilter);
+  else params.delete("loginStatus");
   return params;
 }
 
 function paramsToFilters(searchParams: URLSearchParams): StaffFilters {
   const name = searchParams.get("name") ?? "";
   const tags = searchParams.get("tags")?.split(",").filter(Boolean) ?? [];
-  const clients = searchParams.get("clients")?.split(",").filter(Boolean) ?? [];
+  const agencies = searchParams.get("agencies")?.split(",").filter(Boolean) ?? [];
   const types = searchParams.get("types")?.split(",").filter(Boolean) ?? [];
-  if (!name && tags.length === 0 && clients.length === 0 && types.length === 0) {
+  const loginStatusParam = searchParams.get("loginStatus");
+  const loginStatusFilter: LoginStatusValue | undefined =
+    loginStatusParam === "awaiting_login" ||
+    loginStatusParam === "password_set" ||
+    loginStatusParam === "logged_in"
+      ? loginStatusParam
+      : undefined;
+  if (!name && tags.length === 0 && agencies.length === 0 && types.length === 0 && !loginStatusFilter) {
     return emptyFilters;
   }
-  return { name, typeIds: types, tagIds: tags, agencyIds: clients };
+  return { name, typeIds: types, tagIds: tags, agencyIds: agencies, loginStatusFilter };
 }
 
 export function useFilterParams(): [StaffFilters, (filters: StaffFilters) => void] {
@@ -57,6 +66,10 @@ export function useFilterParams(): [StaffFilters, (filters: StaffFilters) => voi
   );
 
   useEffect(() => {
+    if (hasParams(searchParams)) {
+      filterMemory.set(location.pathname, paramsToFilters(searchParams));
+      return;
+    }
     const memory = filterMemory.get(location.pathname);
     if (memory && !hasParams(searchParams)) {
       setSearchParams(

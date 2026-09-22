@@ -1,82 +1,118 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
-import { AdminLayout } from "../layouts/AdminLayout";
 import { LoadingPage } from "../components/LoadingPage";
-import { LoginPage } from "../pages/LoginPage";
-import { AdminPage } from "../pages/admin/AdminPage";
-import { AdminClientsPage } from "../pages/admin/ClientsPage";
-import { AdminTimesheetsPage } from "../pages/admin/TimesheetsPage";
-import { AdminInvoicesPage } from "../pages/admin/InvoicesPage";
-import { AdminStaffPage } from "../pages/admin/StaffPage";
-import { UserHomePage } from "../pages/clients/HomePage";
-import { InvoicesPage } from "../pages/clients/InvoicesPage";
-import { ProfilePage } from "../pages/clients/ProfilePage";
-import { SupportPage } from "../pages/clients/SupportPage";
-import { TimeSheetsPage } from "../pages/clients/TimeSheetsPage";
-import { UploadPage } from "../pages/Upload";
+import { Login } from "../pages/Login";
+import { ResetPassword } from "../pages/ResetPassword";
+import { ForgotPassword } from "../pages/ForgotPassword";
+import { Agencies } from "../pages/Agencies";
+import { ClientAgencies } from "../pages/ClientAgencies";
+import { Clients } from "../pages/Clients";
+import { AllTimesheets } from "../pages/AllTimesheets";
+import { Payslips } from "../pages/Payslips";
+import { AllInvoices } from "../pages/AllInvoices";
+import { Staff } from "../pages/Staff";
+import { Home } from "../pages/Home";
+import { Invoices } from "../pages/Invoices";
+import { Profile } from "../pages/Profile";
+import { Support } from "../pages/Support";
+import { Timesheets } from "../pages/Timesheets";
+import { Upload } from "../pages/Upload";
+import { Dashboard } from "../pages/Dashboard";
 import { RoleGuard } from "./RoleGuard";
 
 const AppEntryRedirect = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  return <Navigate to="/staff" replace />;
+  if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
+  if (appUser.role === "admin") return <Navigate to="/agencies" replace />;
+  if (appUser.role === "super") return <Navigate to="/clients" replace />;
+  return <Navigate to="/staff?page=1&size=10" replace />;
 };
 
 const LoginRedirect = () => {
   const { firebaseUser, appUser, loading } = useAuth();
   if (loading) return <LoadingPage />;
-  if (firebaseUser && appUser) return <Navigate to="/staff" replace />;
-  return <LoginPage />;
+  if (firebaseUser && appUser) {
+    if (appUser.role === "admin") return <Navigate to="/agencies" replace />;
+    if (appUser.role === "super") return <Navigate to="/clients" replace />;
+    return <Navigate to="/staff?page=1&size=10" replace />;
+  }
+  return <Login />;
 };
 
 const StaffPageSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "admin") return <AdminStaffPage />;
-  return <UserHomePage />;
+  if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
+  if (appUser.role === "super") return <Staff />;
+  return <Home />;
 };
 
 const ProfileSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  return <ProfilePage />;
+  return <Profile />;
+};
+
+const DashboardSwitch = () => {
+  const { appUser } = useAuth();
+  if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role !== "worker") return <Navigate to="/staff?page=1&size=10" replace />;
+  return <Dashboard />;
 };
 
 const InvoicesSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "admin") return <AdminInvoicesPage />;
-  return <InvoicesPage />;
+  if (appUser.role === "super") return <AllInvoices />;
+  return <Invoices />;
 };
 
 const TimesheetsSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "admin") return <AdminTimesheetsPage />;
-  return <TimeSheetsPage />;
+  if (appUser.role === "super") return <AllTimesheets />;
+  return <Timesheets />;
+};
+
+const PayslipsSwitch = () => {
+  const { appUser } = useAuth();
+  if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role === "super" || appUser.role === "admin" || appUser.role === "client") return <Payslips />;
+  return <Navigate to="/staff?page=1&size=10" replace />;
+};
+
+const AgenciesSwitch = () => {
+  const { appUser } = useAuth();
+  if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role === "super") return <Agencies />;
+  return <ClientAgencies />;
 };
 
 export const AppRouter = () => (
   <>
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route element={<RoleGuard role="authenticated" />}>
         <Route element={<AppLayout />}>
           <Route path="/staff" element={<StaffPageSwitch />} />
           <Route path="/profile" element={<ProfileSwitch />} />
-          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/upload" element={<Upload />} />
           <Route path="/invoices" element={<InvoicesSwitch />} />
           <Route path="/timesheets" element={<TimesheetsSwitch />} />
-          <Route path="/support" element={<SupportPage />} />
+          <Route path="/payslips" element={<PayslipsSwitch />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/dashboard" element={<DashboardSwitch />} />
 
-          <Route element={<RoleGuard role="admin" />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/clients" element={<AdminClientsPage />} />
-            </Route>
+          <Route element={<RoleGuard role="super" />}>
+            <Route path="/clients" element={<Clients />} />
           </Route>
+
+          <Route path="/agencies" element={<AgenciesSwitch />} />
 
           <Route path="/" element={<AppEntryRedirect />} />
           <Route path="*" element={<AppEntryRedirect />} />

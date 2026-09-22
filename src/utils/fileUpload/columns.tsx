@@ -1,0 +1,125 @@
+import {
+  CircleCheck,
+  CirclePlus,
+  CircleX,
+  Copy,
+  TriangleAlert,
+} from "lucide-react";
+import type { ColumnDef } from "../../components/modals/MultipleFileUpload";
+import type { PayslipFile, StaffCsvRow } from "../../types/domain";
+import { editFileName } from "./editFileName";
+
+const payslipColumns: ColumnDef<PayslipFile>[] = [
+  {
+    header: "Status",
+    cell: (file) => {
+      if (file.error === "size")
+        return (
+          <span className="inline-flex items-center gap-1 text-red-600">
+            <CircleX className="h-4 w-4" /> Too large
+          </span>
+        );
+      if (file.error === "format")
+        return (
+          <span className="inline-flex items-center gap-1 text-red-600">
+            <CircleX className="h-4 w-4" /> Not PDF
+          </span>
+        );
+      if (file.isDuplicate)
+        return (
+          <span className="inline-flex items-center gap-1 text-purple-600">
+            <Copy className="h-4 w-4" /> Duplicate
+          </span>
+        );
+      if (file.status === "matched")
+        return (
+          <span className="inline-flex items-center gap-1 text-green-600">
+            <CircleCheck className="h-4 w-4" /> Matched
+          </span>
+        );
+      if (file.status === "wrong info")
+        return (
+          <span className="inline-flex items-center gap-1 text-orange-500">
+            <TriangleAlert className="h-4 w-4" /> Wrong Info
+          </span>
+        );
+      return (
+        <span className="inline-flex items-center gap-1 text-red-600">
+          <CircleX className="h-4 w-4" /> Missing
+        </span>
+      );
+    },
+  },
+  {
+    header: "File Name",
+    cell: (file) => (
+      <span className={file.error || file.status === "missing" ? "text-red-600" : ""}>
+        {editFileName(file.file.name)}
+      </span>
+    ),
+  },
+  {
+    header: "First Name",
+    cell: (file) => file.parsedFirstname || "-",
+  },
+  {
+    header: "Last Name",
+    cell: (file) => file.parsedLastname || "-",
+  },
+  {
+    header: "Worker Ref",
+    cell: (file) => file.workerRef || "-",
+  },
+  {
+    header: "Email",
+    cell: (file) => file.email || "-",
+  },
+];
+
+export function getColumns(type: string): ColumnDef<PayslipFile>[] {
+  if (type === "payslip") {
+    return payslipColumns;
+  }
+  return [];
+}
+
+export const staffColumns: ColumnDef<StaffCsvRow>[] = [
+  {
+    header: "Status",
+    cell: (row) => {
+      if (row.status === "New")
+        return (
+          <span className="inline-flex items-center gap-1 text-green-600">
+            <CirclePlus className="h-4 w-4" /> New
+          </span>
+        );
+      if (row.status === "different info")
+        return (
+          <span className="inline-flex items-center gap-1 text-orange-500">
+            <TriangleAlert className="h-4 w-4" /> Different Info
+          </span>
+        );
+      return (
+        <span className="inline-flex items-center gap-1 text-purple-600">
+          <Copy className="h-4 w-4" /> Duplicate
+        </span>
+      );
+    },
+  },
+  {
+    header: "Staff Ref",
+    cell: (row) => row.ref || "-",
+  },
+  {
+    header: "Forename",
+    cell: (row) => row.forename || "-",
+  },
+  {
+    header: "Surname",
+    cell: (row) => row.surname || "-",
+  },
+  {
+    header: "Email",
+    cell: (row) => row.email || "-",
+  },
+];

@@ -10,6 +10,7 @@ export { Separator } from "./Separator";
 export { Checkbox } from "./Checkbox";
 export { ProgressBar } from "./ProgressBar";
 export { AccordionRoot, AccordionItem } from "./Accordion";
+export { AccordionAction } from "./AccordionAction";
 export {
   DialogRoot,
   DialogTrigger,
@@ -24,3 +25,4 @@ export {
   ToastRegion,
 } from "./toast";
 export { Navbar } from "./Navbar";
+export { SendLinkButton } from "./SendLinkButton";

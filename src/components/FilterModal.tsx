@@ -7,9 +7,16 @@ import {
   DialogTitle,
   Input,
 } from "./ui";
-import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
-import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import type {
+  Agency,
+  FilterKeyMap,
+  LoginStatusValue,
+  StaffFilters,
+} from "../types/domain";
+import { getAgencyName } from "../utils/agency";
+import { getTagName } from "../utils/getTagName";
 import { H1, H2, Muted } from "../config/typography";
+import { IsLoggedIn } from "./filters/IsLoggedIn";
 
 interface FilterModalProps {
   open: boolean;
@@ -24,6 +31,7 @@ interface FilterModalProps {
   enableName?: boolean;
   enableTag?: boolean;
   enableAgency?: boolean;
+  enableLoginStatus?: boolean;
 }
 
 export const FilterModal = ({
@@ -38,13 +46,17 @@ export const FilterModal = ({
   enableName = true,
   enableTag = false,
   enableAgency = false,
+  enableLoginStatus = false,
 }: FilterModalProps) => {
   const [name, setName] = useState(filters.name);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
-    new Set(filters.tagIds),
+    new Set(filters.tagIds)
   );
   const [selectedAgencyIds, setSelectedAgencyIds] = useState<Set<string>>(
-    new Set(filters.agencyIds),
+    new Set(filters.agencyIds)
+  );
+  const [loginStatusValue, setLoginStatusValue] = useState<LoginStatusValue>(
+    filters.loginStatusFilter ?? "all"
   );
 
   useEffect(() => {
@@ -53,6 +65,7 @@ export const FilterModal = ({
       setName(filters.name);
       setSelectedTagIds(new Set(filters.tagIds));
       setSelectedAgencyIds(new Set(filters.agencyIds));
+      setLoginStatusValue(filters.loginStatusFilter ?? "all");
     }
   }, [open, filters]);
 
@@ -61,31 +74,15 @@ export const FilterModal = ({
       tagCounts
         ? Object.keys(tags).filter((id) => (tagCounts[id] ?? 0) > 0)
         : Object.keys(tags),
-    [tags, tagCounts],
+    [tags, tagCounts]
   );
 
-  const agencyList = useMemo(() => {
+  const agencyEntries = useMemo(() => {
     if (!agencies) return [];
-    const map: Record<string, string> = {};
-    for (const a of agencies) {
-      const r = a as unknown as Record<string, string>;
-      map[a.id] =
-        a.name ||
-        r.business_name ||
-        r.Company_Name ||
-        r.company_name ||
-        r.name ||
-        findValueByNormalizedKey(
-          r,
-          "businessname",
-          "name",
-          "agencyname",
-          "organisation",
-          "company",
-        ) ||
-        "Unknown";
-    }
-    return map;
+    return agencies.map((a) => {
+      const r = a as unknown as Record<string, unknown>;
+      return { id: a.id, name: getAgencyName(r) };
+    });
   }, [agencies]);
 
   const toggleTag = (id: string) => {
@@ -108,6 +105,7 @@ export const FilterModal = ({
       typeIds: [],
       tagIds: enableTag ? Array.from(selectedTagIds) : [],
       agencyIds: enableAgency ? Array.from(selectedAgencyIds) : [],
+      loginStatusFilter: enableLoginStatus ? loginStatusValue : undefined,
     });
     onOpenChange(false);
   };
@@ -146,7 +144,7 @@ export const FilterModal = ({
                       <Checkbox
                         key={id}
                         id={id}
-                        label={tags[id]}
+                        label={getTagName(tags, id) ?? id}
                         count={tagCounts?.[id]}
                         checked={selectedTagIds.has(id)}
                         onChange={() => toggleTag(id)}
@@ -160,12 +158,12 @@ export const FilterModal = ({
 
           {enableAgency && (
             <div>
-              <H2 as="label">Clients</H2>
-              {Object.keys(agencyList).length === 0 ? (
-                <Muted className="mt-1">No clients have been assigned</Muted>
+              <H2 as="label">Agencies</H2>
+              {agencyEntries.length === 0 ? (
+                <Muted className="mt-1">No agencies have been assigned</Muted>
               ) : (
                 <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
-                  {Object.entries(agencyList).map(([id, name]) => (
+                  {agencyEntries.map(({ id, name }) => (
                     <Checkbox
                       key={id}
                       id={id}
@@ -177,6 +175,18 @@ export const FilterModal = ({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {enableLoginStatus && (
+            <div>
+              <H2 as="label">Login Status</H2>
+              <div className="mt-2">
+                <IsLoggedIn
+                  value={loginStatusValue}
+                  onChange={setLoginStatusValue}
+                />
+              </div>
             </div>
           )}
         </div>

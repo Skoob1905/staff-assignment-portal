@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Filter } from "lucide-react";
+import { Filter, Loader2 } from "lucide-react";
 import { AccordionRoot } from "./ui";
 import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
@@ -30,6 +30,7 @@ interface PaginatedFilterSectionProps<T> {
   enableNameFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
+  enableLoginStatusFilter?: boolean;
 
   tags?: Record<string, string>;
   tagCounts?: Record<string, number>;
@@ -43,6 +44,11 @@ interface PaginatedFilterSectionProps<T> {
   onLeftAccordionChange?: (value: string) => void;
   rightAccordionValue?: string;
   onRightAccordionChange?: (value: string) => void;
+
+  singleColumn?: boolean;
+  accordionType?: "single" | "multiple";
+  multiAccordionValue?: string[];
+  onMultiAccordionChange?: (value: string[]) => void;
 }
 
 export const PaginatedFilterSection = <T,>({
@@ -68,6 +74,7 @@ export const PaginatedFilterSection = <T,>({
   enableNameFilter = true,
   enableTagFilter = true,
   enableAgencyFilter = false,
+  enableLoginStatusFilter = false,
 
   tags,
   tagCounts,
@@ -81,11 +88,16 @@ export const PaginatedFilterSection = <T,>({
     onLeftAccordionChange,
     rightAccordionValue,
     onRightAccordionChange,
+
+    singleColumn = false,
+    accordionType = "single",
+    multiAccordionValue,
+    onMultiAccordionChange,
   }: PaginatedFilterSectionProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const hasAnyFilter =
-    enableNameFilter || enableTagFilter || enableAgencyFilter;
+    enableNameFilter || enableTagFilter || enableAgencyFilter || enableLoginStatusFilter;
 
   const mid = useMemo(() => Math.ceil(items.length / 2), [items.length]);
 
@@ -94,6 +106,7 @@ export const PaginatedFilterSection = <T,>({
     if (enableNameFilter && filters.name.length >= 3) count++;
     if (enableTagFilter) count += filters.tagIds.length;
     if (enableAgencyFilter) count += filters.agencyIds.length;
+    if (filters.loginStatusFilter && filters.loginStatusFilter !== "all") count++;
     return count;
   }, [filters, enableNameFilter, enableTagFilter, enableAgencyFilter]);
 
@@ -121,7 +134,9 @@ export const PaginatedFilterSection = <T,>({
     <>
       <Section title={title} count={totalResults} action={renderHeaderAction()}>
         {loading && items.length === 0 ? (
-          <Muted>Loading...</Muted>
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+          </div>
         ) : items.length === 0 ? (
           <Muted>
             {activeFilterCount > 0
@@ -129,31 +144,45 @@ export const PaginatedFilterSection = <T,>({
               : emptyMessage || `Add some ${title.toLowerCase()} now!`}
           </Muted>
         ) : (
-          <div className="space-y-4">
-            <div className="flex flex-col min-[1500px]:flex-row min-[1500px]:gap-x-3">
-              <div className="flex-1">
-                <AccordionRoot
-                  type="single"
-                  collapsible
-                  {...(leftAccordionValue !== undefined && onLeftAccordionChange !== undefined
-                    ? { value: leftAccordionValue, onValueChange: onLeftAccordionChange }
-                    : {})}
-                >
-                  {items.slice(0, mid).map((item, idx) => renderItem(item, idx))}
-                </AccordionRoot>
+            <div className="space-y-4">
+            {singleColumn && accordionType === "multiple" ? (
+              <AccordionRoot
+                type="multiple"
+                value={multiAccordionValue ?? []}
+                onValueChange={onMultiAccordionChange ?? (() => {})}
+              >
+                {items.map((item, idx) => renderItem(item, idx))}
+              </AccordionRoot>
+            ) : singleColumn ? (
+              <AccordionRoot type="single" collapsible>
+                {items.map((item, idx) => renderItem(item, idx))}
+              </AccordionRoot>
+            ) : (
+              <div className="flex flex-col min-[1500px]:flex-row min-[1500px]:gap-x-3">
+                <div className="flex-1">
+                  <AccordionRoot
+                    type="single"
+                    collapsible
+                    {...(leftAccordionValue !== undefined && onLeftAccordionChange !== undefined
+                      ? { value: leftAccordionValue, onValueChange: onLeftAccordionChange }
+                      : {})}
+                  >
+                    {items.slice(0, mid).map((item, idx) => renderItem(item, idx))}
+                  </AccordionRoot>
+                </div>
+                <div className="flex-1">
+                  <AccordionRoot
+                    type="single"
+                    collapsible
+                    {...(rightAccordionValue !== undefined && onRightAccordionChange !== undefined
+                      ? { value: rightAccordionValue, onValueChange: onRightAccordionChange }
+                      : {})}
+                  >
+                    {items.slice(mid).map((item, idx) => renderItem(item, mid + idx))}
+                  </AccordionRoot>
+                </div>
               </div>
-              <div className="flex-1">
-                <AccordionRoot
-                  type="single"
-                  collapsible
-                  {...(rightAccordionValue !== undefined && onRightAccordionChange !== undefined
-                    ? { value: rightAccordionValue, onValueChange: onRightAccordionChange }
-                    : {})}
-                >
-                  {items.slice(mid).map((item, idx) => renderItem(item, mid + idx))}
-                </AccordionRoot>
-              </div>
-            </div>
+            )}
             <PaginationBar
               currentPage={page + 1}
               totalPages={totalPages}
@@ -182,6 +211,7 @@ export const PaginatedFilterSection = <T,>({
         enableName={enableNameFilter}
         enableTag={enableTagFilter}
         enableAgency={enableAgencyFilter}
+        enableLoginStatus={enableLoginStatusFilter}
       />
     </>
   );

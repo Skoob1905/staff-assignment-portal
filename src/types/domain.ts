@@ -1,4 +1,10 @@
-export type UserRole = "admin" | "client";
+export type LoginStatusValue =
+  | "all"
+  | "awaiting_login"
+  | "password_set"
+  | "logged_in";
+
+export type UserRole = "admin" | "client" | "super" | "worker";
 
 export interface AppUser {
   uid: string;
@@ -7,6 +13,7 @@ export interface AppUser {
   agencyId: string;
   assignedToId?: string;
   registrationStatus?: "awaiting" | "registered";
+  loginStatus?: "awaiting_login" | "password_set" | "logged_in";
   contractSigned?: boolean;
   contractSignedAt?: Date;
   contractSent?: Date;
@@ -18,6 +25,7 @@ export interface AppUser {
   registeredAt?: Date;
   lastLoginTime?: Date | null;
   payslipsSent?: string[];
+  assignedAgencyIds?: string[];
 }
 
 export interface Agency {
@@ -100,6 +108,7 @@ export interface StaffFilters {
   typeIds: string[];
   agencyIds: string[];
   tagIds: string[];
+  loginStatusFilter?: LoginStatusValue;
 }
 
 export const emptyFilters: StaffFilters = {
@@ -114,6 +123,40 @@ export interface StaffCvEntry {
   fileUrl: string;
   uploadedBy: string;
   uploadedAt: string;
+}
+
+export interface UploadableFile {
+  file: File;
+  base64: string;
+  error?: "size" | "format";
+}
+
+export interface CvFile extends UploadableFile {
+  parsedForename: string;
+  parsedSurname: string;
+  match: BulkStaff | null;
+}
+
+export interface PayslipFile extends UploadableFile {
+  parsedFirstname: string;
+  parsedLastname: string;
+  workerRef: string;
+  status: "missing" | "wrong info" | "matched" | "duplicate";
+  isDuplicate?: boolean;
+  email?: string;
+  agencyId?: string;
+  loginStatus?: string;
+}
+
+export interface StaffCsvRow {
+  ref: string;
+  forename: string;
+  surname: string;
+  email: string;
+  status: "New" | "different info" | "duplicate";
+  existingName?: string;
+  existingEmail?: string;
+  data: Record<string, string>;
 }
 
 export interface BulkStaff {
@@ -141,7 +184,10 @@ export interface BulkStaff {
     uploadedInFile?: string;
     uploadedBy?: string;
     importedAt?: Date;
+    loginStatus?: string;
     cv?: StaffCvEntry[];
+    payslipsSent?: string[];
+    payslipCount?: number;
   };
 }
 

@@ -1,24 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { collection, getCountFromServer } from "firebase/firestore";
+import { countCollection } from "../services/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
-import { Body, BodyMedium, Caption, Muted } from "../config/typography";
-import { config } from "../config";
-import { AssignModal } from "./AssignModal";
+import { BodyMedium, Caption, Muted } from "../config/typography";
+import { AgenciesDropdown } from "./AgenciesDropdown";
 import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { db, functions, storage } from "../services/firebase";
+import { toast_mapper, ToastType } from "../config/toast";
+import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
 import {
-  normalizeKey,
-  findValueByNormalizedKey,
-  hasNIColumn,
-  hasBusinessNameColumn,
+  hasAgencyRefColumn,
+  hasClientRefColumn,
 } from "../utils/keyHeaderNormalisation";
+import { FileCleaner } from "../utils/cleanFile";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const DEV_FILE_SIZE_LIMIT = 102400;
@@ -118,25 +116,6 @@ export const AddModal = ({
 }: AddModalProps) => {
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const tags = useAppStore((s) => s.tags);
-  const loadTags = useAppStore((s) => s.loadTags);
-  const isAdmin = appUser?.role === "admin";
-
-  useEffect(() => {
-    if (open) loadTags(true).catch(() => {});
-  }, [open, loadTags]);
-
-  const clientFacetFilters = useMemo(
-    () => (isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]]),
-    [isAdmin, appUser?.agencyId],
-  );
-
-  const { items: clients } = usePaginatedRecords({
-    indexName: "clients_name_desc",
-    agencyId: isAdmin ? "all" : (appUser?.agencyId ?? ""),
-    facetFilters: clientFacetFilters,
-    hitsPerPage: 1000,
-  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [csvData, setCsvData] = useState<{
@@ -150,20 +129,16 @@ export const AddModal = ({
   const [dragOver, setDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processing, setProcessing] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState<
-    string | undefined
-  >();
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedAgencyId, setSelectedAgencyId] = useState("");
+  const [selectedAgencyName, setSelectedAgencyName] = useState("");
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload a CSV file.",
-        variant: "error",
-      });
+    if (
+      !file.name.toLowerCase().endsWith(".csv") &&
+      !file.name.toLowerCase().endsWith(".xlsx")
+    ) {
+      toast(toast_mapper[ToastType.INVALID_FILE]);
       return;
     }
     if (
@@ -171,81 +146,69 @@ export const AddModal = ({
       file.size > DEV_FILE_SIZE_LIMIT &&
       csvType !== "timesheet"
     ) {
-      toast({
-        title: "File too large",
-        description: "In preview mode, files are limited to 100KB.",
-        variant: "error",
-      });
+      toast(toast_mapper[ToastType.FILE_TOO_LARGE]);
       return;
     }
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) return;
-      const parsed = parseCsv(text);
-      if (!parsed.headers.length) {
-        toast({
-          title: "Empty CSV",
-          description: "The CSV file has no headers.",
-          variant: "error",
-        });
-        return;
-      }
-      if (!parsed.rows.length) {
-        toast({
-          title: "Empty CSV",
-          description:
-            "The CSV has headers but no data rows. Add data and try again.",
-          variant: "error",
-        });
-        return;
-      }
+
+      let headers: string[];
+      let rows: CsvRow[];
 
       if (csvType === "staff") {
-        const normalizedHeaders = parsed.headers.map(normalizeKey);
-        if (!hasNIColumn(parsed.headers)) {
-          console.warn(
-            "[AddModal] No NI column found. Headers:",
-            parsed.headers,
-          );
-          toast({
-            title: "Invalid staff file",
-            description: "The CSV must contain an NI Number column.",
-            variant: "error",
-          });
+        const cleaned = await new FileCleaner().cleanFile(file);
+        if (!cleaned.hasHeaders) {
+          toast(toast_mapper[ToastType.NO_COLUMN_HEADERS]);
           return;
         }
-        const hasForename = normalizedHeaders.some(
-          (h) => h === "forename" || h === "firstname",
-        );
-        const hasSurname = normalizedHeaders.some(
-          (h) => h === "surname" || h === "lastname",
-        );
-        const hasFullName = normalizedHeaders.some((h) => h === "fullname");
-        if (!(hasForename && hasSurname) && !hasFullName) {
-          toast({
-            title: "Invalid staff file",
-            description:
-              "The CSV must contain First Name + Surname columns, or a Full Name column.",
-            variant: "error",
-          });
+        if (!cleaned.found.ref) {
+          toast(toast_mapper[ToastType.NO_REF_FOUND]);
           return;
+        }
+        if (!cleaned.found.forename) {
+          toast(toast_mapper[ToastType.NO_FORENAME_FOUND]);
+          return;
+        }
+        if (!cleaned.found.surname) {
+          toast(toast_mapper[ToastType.NO_SURNAME_FOUND]);
+          return;
+        }
+        if (!cleaned.found.email) {
+          toast(toast_mapper[ToastType.NO_EMAIL_FOUND]);
+          return;
+        }
+        headers = cleaned.headers;
+        rows = cleaned.rows;
+      } else {
+        const parsed = parseCsv(text);
+        headers = parsed.headers;
+        rows = parsed.rows;
+        if (!parsed.headers.length) {
+          toast(toast_mapper[ToastType.EMPTY_CSV]);
+          return;
+        }
+        if (!parsed.rows.length) {
+          toast(toast_mapper[ToastType.EMPTY_CSV_DATA]);
+          return;
+        }
+
+        if (csvType === "agency") {
+          if (!hasAgencyRefColumn(parsed.headers)) {
+            toast(toast_mapper[ToastType.INVALID_AGENCY_FILE]);
+            return;
+          }
+        }
+        if (csvType === "client") {
+          if (!hasClientRefColumn(parsed.headers)) {
+            toast(toast_mapper[ToastType.INVALID_CLIENT_FILE]);
+            return;
+          }
         }
       }
 
-      if (csvType === "agency") {
-        if (!hasBusinessNameColumn(parsed.headers)) {
-          toast({
-            title: "Invalid client file",
-            description:
-              "The CSV must contain a Company/Company Name/Business/Business Name column.",
-            variant: "error",
-          });
-          return;
-        }
-      }
-
-      setCsvData({ ...parsed, fileName: file.name, rawFile: file });
+      setCsvData({ headers, rows, fileName: file.name, rawFile: file });
     };
     reader.readAsText(file);
   };
@@ -267,50 +230,7 @@ export const AddModal = ({
     }
   }, [open, initialFile]);
 
-  const tagsMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const tag of tags) {
-      map[tag.id] = tag.value;
-    }
-    return map;
-  }, [tags]);
-
-  const hasAssignment =
-    selectedClientId !== undefined || selectedTagIds.length > 0;
-
-  const selectedClientName = useMemo(() => {
-    if (!selectedClientId) return "";
-    const c = clients.find((c) => c.id === selectedClientId);
-    if (!c) return "Unknown";
-    return (
-      (c.name as string) ||
-      (c.business_name as string) ||
-      (c.Company_Name as string) ||
-      (c.company_name as string) ||
-      (c.agencyName as string) ||
-      findValueByNormalizedKey(
-        c as Record<string, unknown>,
-        "businessname",
-        "companyname",
-        "name",
-        "agencyname",
-        "organisation",
-        "company",
-      ) ||
-      "Unknown"
-    );
-  }, [clients, selectedClientId]);
-
   useEffect(() => {
-    if (loading) {
-      loadingTimerRef.current = setTimeout(() => {
-        toast({
-          title: "Still uploading...",
-          variant: "info",
-          replaceToast: true,
-        });
-      }, 5000);
-    }
     return () => {
       if (loadingTimerRef.current) {
         clearTimeout(loadingTimerRef.current);
@@ -338,37 +258,45 @@ export const AddModal = ({
         });
         setUploadProgress(100);
 
-        toast({
-          title: "Timesheet uploaded",
-          description: `${config.name} has received your timesheet. We will process this as soon as possible.`,
-          variant: "success",
-        });
+        toast(toast_mapper[ToastType.TIMESHEET_UPLOADED]);
         setUploadProgress(0);
         setCsvData(null);
-        setSelectedClientId(undefined);
-        setSelectedTagIds([]);
+        setSelectedAgencyId("");
+        setSelectedAgencyName("");
         onOpenChange(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
       if (ALGOLIA_INDEX_PREFIX === "dev_") {
-        const collectionName = csvType === "staff" ? "staff" : "agencies";
+        const collectionName =
+          csvType === "staff"
+            ? "staff"
+            : csvType === "agency"
+              ? "agencies"
+              : "clients";
         const maxRecords =
           csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
-        const label = csvType === "staff" ? "staff" : "clients";
-        const snap = await getCountFromServer(collection(db, collectionName));
-        const existingCount = snap.data().count;
+        const label =
+          csvType === "staff"
+            ? "staff"
+            : csvType === "agency"
+              ? "agencies"
+              : "clients";
+        const existingCount = await countCollection(collectionName);
         if (existingCount + csvData.rows.length > maxRecords) {
-          toast({
-            title: "Too Many Records",
-            description: `You have ${existingCount} ${label} in the database. Uploading ${csvData.rows.length} more would exceed the ${maxRecords} limit. Please delete some ${label} first.`,
-            variant: "error",
-          });
+          toast(
+            toast_mapper[ToastType.TOO_MANY_RECORDS](
+              existingCount,
+              csvData.rows.length,
+              maxRecords,
+              label,
+            ),
+          );
           return;
         }
       }
 
-      const path = `${storagePath}/${appUser.agencyId}/${Date.now()}-${csvData.fileName}`;
+      const path = `${storagePath}/${Date.now()}-${csvData.fileName}`;
       const storageRef = ref(storage, path);
       const task = uploadBytesResumable(storageRef, csvData.rawFile);
       task.on("state_changed", (snapshot) => {
@@ -381,38 +309,26 @@ export const AddModal = ({
       setProcessing(true);
       const fileUrl = await getDownloadURL(storageRef);
 
-      const recordsToSend = csvData.rows;
+      const recordsToSend = csvData.rows.map((row) => {
+        const cleaned: Record<string, string> = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (key !== "") cleaned[key] = value;
+        }
+        return cleaned;
+      });
 
       const callable = httpsCallable(functions, cloudFunction);
-      const selectedCompany = selectedClientId
-        ? clients.find((c) => c.id === selectedClientId)
-        : null;
       const result = await callable({
         records: recordsToSend,
         totalRecords: csvData.rows.length,
         fileName: csvData.fileName,
         fileUrl,
-        ...(selectedCompany
+        ...(selectedAgencyId
           ? {
-              assignedToId: selectedCompany.id,
-              assignedToName:
-                (selectedCompany.business_name as string) ||
-                (selectedCompany.name as string) ||
-                (selectedCompany.Company_Name as string) ||
-                (selectedCompany.company_name as string) ||
-                (selectedCompany.agencyName as string) ||
-                findValueByNormalizedKey(
-                  selectedCompany as Record<string, unknown>,
-                  "businessname",
-                  "name",
-                  "agencyname",
-                  "organisation",
-                  "company",
-                ) ||
-                "Unknown",
+              assignedToId: selectedAgencyId,
+              assignedToName: selectedAgencyName,
             }
           : {}),
-        ...(selectedTagIds.length > 0 ? { tagIds: selectedTagIds } : {}),
       });
       setProcessing(false);
 
@@ -420,6 +336,7 @@ export const AddModal = ({
         added: number;
         duplicates: number;
         importId?: string;
+        emails: string[];
       };
 
       if (data.importId && recordsToSend.length > 0) {
@@ -441,35 +358,61 @@ export const AddModal = ({
         });
       }
 
-      const dupMsg =
-        data.duplicates > 0
-          ? ` with ${data.duplicates} duplicate${data.duplicates === 1 ? "" : "s"}`
-          : "";
+      if (data.added === 0 && data.duplicates > 0) {
+        toast(toast_mapper[ToastType.IMPORT_ALL_DUPLICATES](data.duplicates));
+        setUploadProgress(0);
+        setCsvData(null);
+        setSelectedAgencyId("");
+        setSelectedAgencyName("");
+        onOpenChange(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
 
-      toast({
-        title: "File uploaded",
-        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupMsg}.`,
-        replaceToast: true,
-      });
+      toast(
+        toast_mapper[ToastType.IMPORT_SUCCESS](
+          data.added,
+          itemLabel,
+          itemLabelPlural,
+          data.duplicates,
+        ),
+      );
       setUploadProgress(0);
       setCsvData(null);
-      setSelectedClientId(undefined);
-      setSelectedTagIds([]);
+      setSelectedAgencyId("");
+      setSelectedAgencyName("");
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      await onSuccess?.(data.importId);
+      try {
+        await onSuccess?.(data.importId);
+      } catch {
+        // onSuccess failure shouldn't block email sending
+      }
+
+      if (Array.isArray(data.emails) && data.emails.length > 0) {
+        const emailCallable = httpsCallable(functions, "sendImportEmails");
+        const emailResult = await emailCallable({
+          emails: data.emails,
+          type:
+            csvType === "staff"
+              ? "worker"
+              : csvType === "agency"
+                ? "agency"
+                : "client",
+        });
+        const { queued } = emailResult.data as { queued: number };
+        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
+      }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
       if (
         csvType === "timesheet" &&
         (code === "already-exists" || code === "functions/already-exists")
       ) {
-        toast({
-          title: "Duplicate timesheet",
-          description: `A timesheet named "${csvData?.fileName ?? ""}" has already been uploaded.`,
-          variant: "error",
-        });
+        toast(
+          toast_mapper[ToastType.DUPLICATE_TIMESHEET](csvData?.fileName ?? ""),
+        );
       } else {
         const message =
           typeof error === "object" &&
@@ -478,12 +421,7 @@ export const AddModal = ({
           typeof (error as { message?: string }).message === "string"
             ? (error as { message: string }).message
             : "Upload failed. Please try again.";
-        toast({
-          title: "Upload failed",
-          description: message,
-          variant: "error",
-          replaceToast: true,
-        });
+        toast(toast_mapper[ToastType.UPLOAD_FAILED](message));
       }
     } finally {
       setLoading(false);
@@ -511,8 +449,8 @@ export const AddModal = ({
             onOpenChange(false);
             setCsvData(null);
             setUploadProgress(0);
-            setSelectedClientId(undefined);
-            setSelectedTagIds([]);
+            setSelectedAgencyId("");
+            setSelectedAgencyName("");
             if (fileInputRef.current) fileInputRef.current.value = "";
           }}
           className={`max-w-none flex flex-col overflow-hidden ${
@@ -550,7 +488,7 @@ export const AddModal = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx"
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
@@ -617,36 +555,22 @@ export const AddModal = ({
                 </div>
               ) : null}
 
-              <div className="mt-4 flex items-center justify-between gap-2">
-                <div>
-                  {csvType === "staff" && hasAssignment && (
-                    <Body as="div">
-                      {selectedTagIds.length > 0 && (
-                        <div>
-                          <span className="font-semibold">Tags:</span>{" "}
-                          {selectedTagIds
-                            .map((id) => tagsMap[id] || id)
-                            .join(", ")}
-                        </div>
-                      )}
-                      {selectedClientId && (
-                        <div>
-                          <span className="font-semibold">Client:</span>{" "}
-                          {selectedClientName}
-                        </div>
-                      )}
-                    </Body>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <div className="flex items-center gap-2">
                   {csvType === "staff" && (
-                    <Button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => setShowAssignModal(true)}
-                    >
-                      {hasAssignment ? "Edit" : "Auto-Assign"}
-                    </Button>
+                    <>
+                      <BodyMedium>Auto Assign</BodyMedium>
+                      <AgenciesDropdown
+                        value={selectedAgencyId}
+                        onChange={(value, name) => {
+                          setSelectedAgencyId(value);
+                          setSelectedAgencyName(name);
+                        }}
+                        disabled={loading}
+                        className="h-9 w-48 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                        placeholder="Select an agency..."
+                      />
+                    </>
                   )}
                   <Button
                     type="button"
@@ -672,36 +596,6 @@ export const AddModal = ({
           ) : null}
         </DialogContent>
       </DialogRoot>
-
-      <AssignModal
-        open={showAssignModal}
-        onOpenChange={setShowAssignModal}
-        clients={clients.map((c) => ({
-          id: c.id as string,
-          name:
-            (c.name as string) ||
-            (c.business_name as string) ||
-            (c.Company_Name as string) ||
-            (c.company_name as string) ||
-            (c.agencyName as string) ||
-            findValueByNormalizedKey(
-              c as Record<string, unknown>,
-              "businessname",
-              "name",
-              "agencyname",
-              "organisation",
-              "company",
-            ) ||
-            "Unknown",
-        }))}
-        tags={tags}
-        selectedClientId={selectedClientId}
-        selectedTagIds={selectedTagIds}
-        onConfirm={(clientId, tagIds) => {
-          setSelectedClientId(clientId);
-          setSelectedTagIds(tagIds);
-        }}
-      />
     </>
   );
 };
