@@ -55,7 +55,7 @@ export const AppLayout = () => {
 
           <main
             className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3 sm:py-6"
-            style={{ backgroundColor: "var(--muted)" }}
+            style={{ backgroundColor: "var(--header-bg)" }}
           >
             <Outlet />
           </main>

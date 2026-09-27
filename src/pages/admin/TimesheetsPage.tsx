@@ -3,7 +3,7 @@ import { useAccordionParams } from "../../hooks/useAccordionParams";
 import { httpsCallable } from "firebase/functions";
 import { AccordionItem, AccordionRoot, Button, DeleteButton } from "../../components/ui";
 import { Content } from "../../components/Content";
-import { AccordionTitle } from "../../components/AccordionTitle";
+import { AccordionTitle } from "../../views/Accordion";
 import { InformationCard } from "../../components/InformationCard";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { Pill } from "../../components/Pill";

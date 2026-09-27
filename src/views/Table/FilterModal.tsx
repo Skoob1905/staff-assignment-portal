@@ -6,10 +6,10 @@ import {
   DialogRoot,
   DialogTitle,
   Input,
-} from "./ui";
-import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
-import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
-import { H1, H2, Muted } from "../config/typography";
+} from "../../components/ui";
+import type { Agency, FilterKeyMap, StaffFilters } from "../../types/domain";
+import { findValueByNormalizedKey } from "../../utils/keyHeaderNormalisation";
+import { H1, H2, Muted } from "../../config/typography";
 
 interface FilterModalProps {
   open: boolean;

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PageTitle } from "./PageTitle";
 
 interface ContentProps {
   title: string;
@@ -8,17 +9,20 @@ interface ContentProps {
   className?: string;
 }
 
-export const Content = ({ title, count, action, children, className }: ContentProps) => (
-  <div
-    className={`flex w-full flex-col rounded-[var(--radius)] bg-[var(--card)] p-3 sm:p-4 ${className ?? ""}`}
-  >
-    <div className="flex items-start justify-between">
-      <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)]">
-        {title}
-        {count !== undefined && ` (${count})`}
-      </h2>
-      {action && <div className="flex items-center gap-2">{action}</div>}
+export const Content = ({
+  title,
+  count,
+  action,
+  children,
+  className,
+}: ContentProps) => (
+  <div className={`flex w-full flex-col ${className ?? ""}`}>
+    <PageTitle action={action}>
+      {title}
+      {count !== undefined && ` (${count})`}
+    </PageTitle>
+    <div className="mt-1.5 sm:mt-3 rounded-[var(--radius)] bg-[var(--card)] p-3 sm:p-4">
+      {children}
     </div>
-    <div className="mt-1.5 sm:mt-3">{children}</div>
   </div>
 );

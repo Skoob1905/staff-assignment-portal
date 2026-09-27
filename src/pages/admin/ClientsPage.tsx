@@ -12,14 +12,14 @@ import {
   DownloadButton,
 } from "../../components/ui";
 import { Pill } from "../../components/Pill";
-import { AccordionTitle } from "../../components/AccordionTitle";
+import { StaffAccordionHeader } from "../../views/Accordion";
 import { Metadata } from "../../components/Metadata";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { findValueByNormalizedKey } from "../../utils/keyHeaderNormalisation";
 import { functions } from "../../services/firebase";
 import { toDate } from "../../utils/date";
-import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
+import { PaginatedFilterSection } from "../../views/Table";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
 import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
@@ -199,6 +199,12 @@ export const AdminClientsPage = () => {
         items={clients}
         loading={loading}
         totalResults={totalResults}
+        columnHeaders={[
+          "Company Name",
+          "Email Address",
+          "Address Line 1",
+          "Address Line 2",
+        ]}
         renderItem={(client, idx) => {
           const meta = (client as Record<string, unknown>).metadata as
             | Record<string, unknown>
@@ -206,20 +212,48 @@ export const AdminClientsPage = () => {
           const scName = meta?.signedContractName as string | undefined;
           const scUrl = meta?.signedContract as string | undefined;
           const scDate = meta?.signedContractAt as string | number | undefined;
+          const email = findValueByNormalizedKey(
+            client,
+            "email",
+            "emailaddress",
+          );
+          const addressLine1 = findValueByNormalizedKey(
+            client,
+            "address line 1",
+            "addressline1",
+            "address1",
+            "first line of address",
+          );
+          const addressLine2 = findValueByNormalizedKey(
+            client,
+            "address line 2",
+            "addressline2",
+            "address2",
+            "second line of address",
+          );
           return (
             <AccordionItem
               key={client.id as string}
               value={client.id as string}
               className="animate-cascade"
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-              title={
-                <div className="flex min-w-0 w-full items-center gap-2">
-                  <AccordionTitle className="leading-none">{getPrimaryLabel(client)}</AccordionTitle>
+              columns={[
+                <span className="tabular-nums">{idx + 1}</span>,
+                <StaffAccordionHeader name={getPrimaryLabel(client)}>
                   {scName && (
                     <Pill status="signed" icon={<FileSignature className="h-4 w-4" />} label="" />
                   )}
-                </div>
-              }
+                </StaffAccordionHeader>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {email || "—"}
+                </span>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {addressLine1 || "—"}
+                </span>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {addressLine2 || "—"}
+                </span>,
+              ]}
             >
               {scName && scUrl && (
                 <div className="mb-2 flex items-center gap-2">

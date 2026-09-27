@@ -7,8 +7,8 @@ import { FileInteractionButtons } from "../../components/FileInteractionButtons"
 import { ImportHistory } from "../../components/ImportHistory";
 import { Metadata } from "../../components/Metadata";
 import { Pill } from "../../components/Pill";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { StaffListSection } from "../../components/StaffListSection";
+import { TableView } from "../../views/Table";
+import { StaffAccordionHeader } from "../../views/Accordion";
 import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
 import { useRecordsTab } from "../../hooks/useRecordsTab";
 import {
@@ -28,6 +28,7 @@ import { getCompanyName } from "../../utils/company";
 import {
   getStaffName,
   getStaffNameFromRawRecord,
+  findValueByNormalizedKey,
 } from "../../utils/keyHeaderNormalisation";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { Muted } from "../../config/typography";
@@ -220,10 +221,17 @@ export const AdminStaffPage = () => {
     <div className="flex flex-1 flex-col space-y-4">
       {!isHistory && (
         <>
-          <StaffListSection
+          <TableView
         view="admin"
         refreshTrigger={staffRefreshTrigger}
         agencies={companies as unknown as Agency[]}
+        columnHeaders={[
+          "Name",
+          { label: "Email", className: "flex-[0.7]" },
+          { label: "Assigned To", className: "flex-[0.7]" },
+          "NI Number",
+          "Title",
+        ]}
         leftAccordionValue={leftValue}
         onLeftAccordionChange={onLeftChange}
         rightAccordionValue={rightValue}
@@ -234,14 +242,42 @@ export const AdminStaffPage = () => {
             value={member.id}
             className="animate-cascade"
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-            title={
-              <div className="flex min-w-0 items-center gap-2">
-                <AccordionTitle>{getStaffName(member)}</AccordionTitle>
+            columns={[
+              <span className="tabular-nums">{idx + 1}</span>,
+              <StaffAccordionHeader name={getStaffName(member)}>
                 {member.metadata?.cv && member.metadata.cv.length > 0 && (
                   <Pill status="cv" icon={<FileText className="h-4 w-4" />} label="" />
                 )}
-              </div>
-            }
+              </StaffAccordionHeader>,
+              {
+                node: (
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {member.email || "—"}
+                  </span>
+                ),
+                className: "flex-[0.7]",
+              },
+              {
+                node: (
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {member.metadata?.assignedToName || "—"}
+                  </span>
+                ),
+                className: "flex-[0.7]",
+              },
+              <span className="text-sm text-[var(--muted-foreground)]">
+                {findValueByNormalizedKey(
+                  member as unknown as Record<string, unknown>,
+                  "ni number",
+                ) || "—"}
+              </span>,
+              <span className="text-sm text-[var(--muted-foreground)]">
+                {findValueByNormalizedKey(
+                  member as unknown as Record<string, unknown>,
+                  "job title",
+                ) || "—"}
+              </span>,
+            ]}
             actions={
               <>
                 {member.metadata?.assignedToName ? (

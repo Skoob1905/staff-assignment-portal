@@ -5,38 +5,42 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { AccordionItem } from "./ui";
-import { useAuth } from "../context/AuthProvider";
-import { useAppStore } from "../stores/appStore";
-import { formatInvitedAt } from "../utils/date";
-import { PaginatedFilterSection } from "./PaginatedFilterSection";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { useFilterParams } from "../hooks/useFilterParams";
-import { usePaginationParams } from "../hooks/usePaginationParams";
-import { getStaffName } from "../utils/keyHeaderNormalisation";
-import { FileInteractionButtons } from "./FileInteractionButtons";
-import { Metadata } from "./Metadata";
-import { Pill } from "./Pill";
-import { AccordionTitle } from "./AccordionTitle";
+import { AccordionItem } from "../../components/ui";
+import { useAuth } from "../../context/AuthProvider";
+import { useAppStore } from "../../stores/appStore";
+import { formatInvitedAt } from "../../utils/date";
+import { PaginatedFilterSection, type ColumnHeader } from "./PaginatedFilterSection";
+import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
+import { useFilterParams } from "../../hooks/useFilterParams";
+import { usePaginationParams } from "../../hooks/usePaginationParams";
+import {
+  getStaffName,
+  findValueByNormalizedKey,
+} from "../../utils/keyHeaderNormalisation";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
+import { Metadata } from "../../components/Metadata";
+import { Pill } from "../../components/Pill";
+import { StaffAccordionHeader } from "../Accordion";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
-} from "../utils/loginsFilter";
+} from "../../utils/loginsFilter";
 import { FileText } from "lucide-react";
 import type {
   Agency,
   BulkStaff,
   FilterKeyMap,
   StaffFilters,
-} from "../types/domain";
+} from "../../types/domain";
 
-interface StaffListSectionProps {
+interface TableViewProps {
   view: "admin" | "client";
   targetAgencyId?: string;
   action?: ReactNode;
   refreshTrigger?: number;
   renderItem?: (item: BulkStaff, index: number) => ReactNode;
   agencies?: Agency[];
+  columnHeaders?: ColumnHeader[];
 
   leftAccordionValue?: string;
   onLeftAccordionChange?: (value: string) => void;
@@ -44,19 +48,20 @@ interface StaffListSectionProps {
   onRightAccordionChange?: (value: string) => void;
 }
 
-export const StaffListSection = ({
+export const TableView = ({
   view,
   targetAgencyId,
   action,
   refreshTrigger,
   renderItem,
   agencies,
+  columnHeaders,
 
   leftAccordionValue,
   onLeftAccordionChange,
   rightAccordionValue,
   onRightAccordionChange,
-}: StaffListSectionProps) => {
+}: TableViewProps) => {
   const { appUser } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
@@ -137,15 +142,19 @@ export const StaffListSection = ({
   const defaultRenderItem = useCallback(
     (member: BulkStaff, idx: number) => {
       const displayName = getStaffName(member);
+      const niNumber = findValueByNormalizedKey(
+        member as unknown as Record<string, unknown>,
+        "ni number",
+      );
       return (
         <AccordionItem
           key={member.id}
           value={member.id}
           className="animate-cascade"
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-          title={
-            <div className="flex min-w-0 items-center gap-2">
-              <AccordionTitle>{displayName}</AccordionTitle>
+          columns={[
+            <span className="tabular-nums">{idx + 1}</span>,
+            <StaffAccordionHeader name={displayName}>
               {member.metadata?.cv && member.metadata.cv.length > 0 && (
                 <Pill
                   status="cv"
@@ -153,8 +162,17 @@ export const StaffListSection = ({
                   label=""
                 />
               )}
-            </div>
-          }
+            </StaffAccordionHeader>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {member.email || "—"}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {member.metadata?.assignedToName || "—"}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {niNumber || "—"}
+            </span>,
+          ]}
         >
           {member.tags && member.tags.length > 0 && (
             <Metadata
@@ -262,6 +280,9 @@ export const StaffListSection = ({
       }
       action={!isClient ? action : undefined}
       renderItem={renderItem ?? defaultRenderItem}
+      columnHeaders={
+        columnHeaders ?? ["Name", "Email", "Assigned To", "NI Number"]
+      }
       leftAccordionValue={leftAccordionValue}
       onLeftAccordionChange={onLeftAccordionChange}
       rightAccordionValue={rightAccordionValue}

@@ -3,7 +3,8 @@ import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { LoadingPage } from "../components/LoadingPage";
-import { LoginPage } from "../pages/LoginPage";
+import { Login } from "../pages/Login";
+import { ForgotPassword } from "../pages/ForgotPassword";
 import { AdminPage } from "../pages/admin/AdminPage";
 import { AdminClientsPage } from "../pages/admin/ClientsPage";
 import { AdminTimesheetsPage } from "../pages/admin/TimesheetsPage";
@@ -25,7 +26,7 @@ const LoginRedirect = () => {
   const { firebaseUser, appUser, loading } = useAuth();
   if (loading) return <LoadingPage />;
   if (firebaseUser && appUser) return <Navigate to="/staff" replace />;
-  return <LoginPage />;
+  return <Login />;
 };
 
 const StaffPageSwitch = () => {
@@ -46,6 +47,7 @@ export const AppRouter = () => (
   <>
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route element={<RoleGuard role="authenticated" />}>
         <Route element={<AppLayout />}>

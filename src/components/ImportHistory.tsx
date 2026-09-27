@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { ActionButton, Button, Card, DialogContent, DialogRoot, DialogTitle, DownloadButton } from "./ui";
+import { PageTitle } from "./PageTitle";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { functions } from "../services/firebase";
@@ -198,8 +199,8 @@ export const ImportHistory = ({
 
   return (
     <>
-      <Card>
-        <h2 className="text-base sm:text-lg font-bold">Import History</h2>
+      <PageTitle>Import History</PageTitle>
+      <Card className="mt-1.5 sm:mt-3">
         {loading ? (
           <Muted className="mt-3">
             Loading...

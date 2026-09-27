@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthProvider";
 import { getPayslipsForUser } from "../../services/payslipService";
 import type { Payslip } from "../../types/domain";
-import { StaffListSection } from "../../components/StaffListSection";
+import { TableView } from "../../views/Table";
 import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
 
 export const UserHomePage = () => {
@@ -344,7 +344,7 @@ export const UserHomePage = () => {
         </DialogContent>
       </DialogRoot> */}
 
-      <StaffListSection
+      <TableView
         view="client"
         leftAccordionValue={leftValue}
         onLeftAccordionChange={onLeftChange}

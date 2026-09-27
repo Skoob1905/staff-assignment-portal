@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { AccordionRoot } from "./ui";
-import { PaginationBar } from "./PaginationBar";
+import { PaginationBar } from "../views/Table";
 import { Content } from "./Content";
 import { Muted } from "../config/typography";
 
