@@ -259,8 +259,63 @@ export const AdminStaffPage = () => {
               },
               {
                 node: (
-                  <span className="text-sm text-[var(--muted-foreground)]">
-                    {member.metadata?.assignedToName || "—"}
+                  <span className="group inline-flex min-w-0 items-center gap-1.5 text-sm text-[var(--muted-foreground)]">
+                    {member.metadata?.assignedToName ? (
+                      <>
+                        <span className="truncate">
+                          {member.metadata.assignedToName}
+                        </span>
+                        <span
+                          className="shrink-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ActionButton
+                            variant="delete"
+                            size="md"
+                            ariaLabel="Unassign staff"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnassignTarget(member);
+                            }}
+                          />
+                        </span>
+                      </>
+                    ) : appUser?.role === "admin" ? (
+                      <span
+                        className="inline-flex items-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {activeAssignMenu === member.id ? (
+                          <ClientsDropdown
+                            disabled={assigningStaffId === member.id}
+                            value=""
+                            onChange={(value) => {
+                              if (value) handleAssign(member.id, value);
+                              setActiveAssignMenu(null);
+                            }}
+                            className="h-7 w-full rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                            placeholder="Select client..."
+                            autoFocus
+                            onBlur={() => setActiveAssignMenu(null)}
+                          />
+                        ) : assigningStaffId === member.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveAssignMenu(member.id);
+                            }}
+                            className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
+                          >
+                            <Pen className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </span>
                 ),
                 className: "flex-[0.7]",
@@ -278,59 +333,6 @@ export const AdminStaffPage = () => {
                 ) || "—"}
               </span>,
             ]}
-            actions={
-              <>
-                {member.metadata?.assignedToName ? (
-                  <span className="group inline-flex shrink-0 items-center text-xs sm:text-sm text-[var(--muted-foreground)]">
-                    <span className="truncate max-w-[200px] transition-all duration-200 group-hover:mr-1">
-                      {member.metadata.assignedToName}
-                    </span>
-                    <span className="hidden overflow-hidden w-0 transition-all duration-200 group-hover:w-6 sm:inline-flex">
-                      <ActionButton
-                        variant="delete"
-                        size="md"
-                        ariaLabel="Unassign staff"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUnassignTarget(member);
-                        }}
-                        className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                      />
-                    </span>
-                  </span>
-                ) : (
-                  <span
-                    className="hidden sm:inline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {activeAssignMenu === member.id ? (
-                      <ClientsDropdown
-                        disabled={assigningStaffId === member.id}
-                        value=""
-                        onChange={(value) => {
-                          if (value) handleAssign(member.id, value);
-                          setActiveAssignMenu(null);
-                        }}
-                        className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                        placeholder="Select client..."
-                        autoFocus
-                        onBlur={() => setActiveAssignMenu(null)}
-                      />
-                    ) : assigningStaffId === member.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setActiveAssignMenu(member.id)}
-                        className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
-                      >
-                        <Pen className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </span>
-                )}
-              </>
-            }
           >
             {(appUser?.role === "admin" || (member.tags?.length ?? 0) > 0) && (
               <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">

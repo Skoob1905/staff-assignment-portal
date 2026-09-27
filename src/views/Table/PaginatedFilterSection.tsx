@@ -5,6 +5,10 @@ import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
 import { PageTitle } from "../../components/PageTitle";
 import { Muted } from "../../config/typography";
+import {
+  buildAgencyNameMap,
+  buildFilterSummary,
+} from "../../utils/filterSummary";
 import type { Agency, FilterKeyMap, StaffFilters } from "../../types/domain";
 
 export type ColumnHeader = string | { label: string; className?: string };
@@ -32,6 +36,7 @@ interface PaginatedFilterSectionProps<T> {
   enableNameFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
+  nameFilterLabel?: string;
 
   tags?: Record<string, string>;
   tagCounts?: Record<string, number>;
@@ -78,6 +83,7 @@ export const PaginatedFilterSection = <T,>({
   enableNameFilter = true,
   enableTagFilter = true,
   enableAgencyFilter = false,
+  nameFilterLabel,
 
   tags,
   tagCounts,
@@ -108,6 +114,26 @@ export const PaginatedFilterSection = <T,>({
     return count;
   }, [filters, enableNameFilter, enableTagFilter, enableAgencyFilter]);
 
+  const filterSummary = useMemo(() => {
+    const agencyNameMap = buildAgencyNameMap(agencies);
+    return buildFilterSummary(
+      filters,
+      { tags, agencies: agencyNameMap },
+      {
+        includeName: enableNameFilter,
+        includeTags: enableTagFilter,
+        includeAgencies: enableAgencyFilter,
+      },
+    );
+  }, [
+    filters,
+    tags,
+    agencies,
+    enableNameFilter,
+    enableTagFilter,
+    enableAgencyFilter,
+  ]);
+
   const renderHeaderAction = () => (
     <div className="flex items-center gap-2">
       {hasAnyFilter && (totalResults > 0 || activeFilterCount > 0) && (
@@ -121,6 +147,11 @@ export const PaginatedFilterSection = <T,>({
           {activeFilterCount > 0 && (
             <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-bold text-white">
               {activeFilterCount}
+            </span>
+          )}
+          {filterSummary && (
+            <span className="max-w-[240px] truncate text-[var(--muted-foreground)]">
+              {filterSummary}
             </span>
           )}
         </button>
@@ -243,6 +274,7 @@ export const PaginatedFilterSection = <T,>({
         enableName={enableNameFilter}
         enableTag={enableTagFilter}
         enableAgency={enableAgencyFilter}
+        nameLabel={nameFilterLabel}
       />
     </>
   );

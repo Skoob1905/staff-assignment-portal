@@ -1,4 +1,5 @@
 import type { Theme } from "./types";
+import { colors } from "./colors";
 
 export const darkTheme: Theme = {
   appBackground: "#0F172A",
@@ -7,7 +8,7 @@ export const darkTheme: Theme = {
   cardForeground: "#F8FAFC",
   muted: "#334155",
   mutedForeground: "#94A3B8",
-  primary: "#60A5FA",
+  primary: colors.accentMid,
   primaryForeground: "#0F172A",
   border: "#334155",
   destructive: "#F87171",
@@ -27,8 +28,8 @@ export const lightTheme: Theme = {
   cardForeground: "#0F172A",
   muted: "#F1F5F9",
   mutedForeground: "#64748B",
-  primary: "#2563EB",
-  primaryForeground: "#FFFFFF",
+  primary: colors.primary,
+  primaryForeground: colors.primaryForeground,
   border: "#E2E8F0",
   destructive: "#DC2626",
   headerBg: "#FFFFFF",

@@ -19,22 +19,11 @@ export const AppLayout = () => {
     <div className="flex h-screen flex-col overflow-hidden app-bg">
       <GlobalBanner />
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 gap-1 p-1.5">
         <Navbar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden"
-          style={{ backgroundColor: "var(--header-bg)" }}
-        >
-          <header
-            className="grid h-[72px] shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b px-4 sm:px-6"
-            style={{
-              backgroundColor: "var(--header-bg)",
-              borderColor: "transparent",
-              borderImage:
-                "linear-gradient(90deg, #99f6e4, #93c5fd, #99f6e4) 1",
-            }}
-          >
+        <div className="flex min-h-0 flex-1 flex-col gap-1">
+          <header className="grid h-[72px] shrink-0 grid-cols-[1fr_auto_1fr] items-center rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-4 sm:px-6">
             <div className="flex items-center">
               <button
                 onClick={() => setSidebarOpen(true)}
@@ -53,10 +42,7 @@ export const AppLayout = () => {
             </div>
           </header>
 
-          <main
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3 sm:py-6"
-            style={{ backgroundColor: "var(--header-bg)" }}
-          >
+          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-4 py-3 sm:py-6">
             <Outlet />
           </main>
         </div>

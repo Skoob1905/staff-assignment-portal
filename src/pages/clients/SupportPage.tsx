@@ -61,7 +61,7 @@ export const SupportPage = () => {
             }}
             placeholder="Type your message here..."
             rows={6}
-            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-bg)] p-3 pb-7 text-sm text-[var(--foreground)] placeholder:text-[var(--placeholder)] transition-colors duration-200 focus:border-[#93c5fd] focus:outline-none focus:ring-1 focus:ring-[#93c5fd] resize-none"
+            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-bg)] p-3 pb-7 text-sm text-[var(--foreground)] placeholder:text-[var(--placeholder)] transition-colors duration-200 focus:border-[var(--primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)] resize-none"
           />
           <Caption className="absolute bottom-2 right-3 pointer-events-none">
             {remaining} characters remaining

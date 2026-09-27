@@ -1,4 +1,5 @@
 import { type ElementType, useRef, useState } from "react";
+import { colors } from "../config/colors";
 
 interface FileDropProps {
   icon: ElementType;
@@ -70,24 +71,28 @@ export const FileDrop = ({
       onClick={handleClick}
       className={`aspect-square max-w-[300px] w-full cursor-pointer rounded-2xl border-2 border-dashed p-4 sm:p-6 flex flex-col items-center justify-center gap-2 transition-all duration-200${noScale ? "" : " hover:scale-[1.02]"}`}
       style={{
-        borderColor: feint ? (hovered ? "#60a5fa" : "#93c5fd") : `${color}50`,
+        borderColor: feint
+          ? hovered
+            ? colors.primary
+            : colors.accent
+          : `${color}50`,
         backgroundColor: feint
           ? hovered
-            ? "#dbeafe"
-            : "#eff6ff"
+            ? colors.primarySoft
+            : colors.primaryWash
           : dragOver
             ? `${color}1A`
             : `${color}0D`,
-        backgroundImage: feint ? "rgba(147,197,253,0.45)" : undefined,
+        backgroundImage: feint ? colors.accentTranslucent : undefined,
       }}
     >
       <Icon
         className="h-8 w-8 sm:h-10 sm:w-10"
-        style={{ color: feint ? "#3b82f6" : color }}
+        style={{ color: feint ? colors.primary : color }}
       />
       <span
         className="text-xs sm:text-sm font-bold"
-        style={{ color: feint ? "#3b82f6" : color }}
+        style={{ color: feint ? colors.primary : color }}
       >
         {title}
       </span>

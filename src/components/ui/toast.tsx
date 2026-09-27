@@ -35,25 +35,25 @@ export const ToastItem = ({
   const borderColor = isError
     ? "border-red-300 bg-red-50"
     : isInfo
-      ? "border-blue-300 bg-blue-50"
+      ? "border-teal-300 bg-teal-50"
       : "border-emerald-300 bg-emerald-50";
 
   const textColor = isError
     ? "text-red-900"
     : isInfo
-      ? "text-blue-900"
+      ? "text-teal-900"
       : "text-emerald-900";
 
   const descColor = isError
     ? "text-red-800"
     : isInfo
-      ? "text-blue-800"
+      ? "text-teal-800"
       : "text-emerald-800";
 
   const closeColor = isError
     ? "text-red-700 hover:text-red-900"
     : isInfo
-      ? "text-blue-700 hover:text-blue-900"
+      ? "text-teal-700 hover:text-teal-900"
       : "text-emerald-700 hover:text-emerald-900";
 
   return (

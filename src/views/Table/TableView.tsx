@@ -146,6 +146,10 @@ export const TableView = ({
         member as unknown as Record<string, unknown>,
         "ni number",
       );
+      const jobTitle = findValueByNormalizedKey(
+        member as unknown as Record<string, unknown>,
+        "job title",
+      );
       return (
         <AccordionItem
           key={member.id}
@@ -171,6 +175,9 @@ export const TableView = ({
             </span>,
             <span className="text-sm text-[var(--muted-foreground)]">
               {niNumber || "—"}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {jobTitle || "—"}
             </span>,
           ]}
         >
@@ -271,6 +278,7 @@ export const TableView = ({
       onPageSizeChange={setPageSize}
       filters={filters}
       onFiltersChange={handleFiltersChange}
+      nameFilterLabel="Name, Email, NI Number"
       tags={filterTagsMap}
       tagCounts={facetCounts?.tags}
       agencies={filterAgencies}
@@ -281,7 +289,7 @@ export const TableView = ({
       action={!isClient ? action : undefined}
       renderItem={renderItem ?? defaultRenderItem}
       columnHeaders={
-        columnHeaders ?? ["Name", "Email", "Assigned To", "NI Number"]
+        columnHeaders ?? ["Name", "Email", "Assigned To", "NI Number", "Title"]
       }
       leftAccordionValue={leftAccordionValue}
       onLeftAccordionChange={onLeftAccordionChange}

@@ -1,17 +1,17 @@
 export const palette = {
-  primaryBlue: {
-    100: "#EFF6FF",
-    200: "#DBEAFE",
-    300: "#93C5FD",
-    400: "#60A5FA",
-    500: "#2563EB",
+  primary: {
+    100: "#E7F4F3",
+    200: "#C2E6E3",
+    300: "#99F6E4",
+    400: "#5EEAD4",
+    500: "#1F8D87",
   },
   primaryDark: {
-    100: "#EEF2FF",
+    100: "#E7F4F3",
     200: "#CBD5E1",
     300: "#94A3B8",
     400: "#475569",
-    500: "#1E3A8A",
+    500: "#0F5F5B",
   },
   accentTeal: {
     100: "#ECFDF5",
