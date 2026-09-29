@@ -7,7 +7,8 @@ export const Footer = () => {
       style={{
         backgroundColor: "var(--header-bg)",
         borderColor: "transparent",
-        borderImage: "linear-gradient(90deg, #99f6e4, #93c5fd, #99f6e4) 1",
+        borderImage:
+          "linear-gradient(90deg, var(--primary-300), var(--primary), var(--primary-300)) 1",
       }}
     >
       <div className="mx-auto max-w-6xl px-4 flex items-center justify-between">

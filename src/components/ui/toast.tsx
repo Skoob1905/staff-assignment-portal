@@ -17,7 +17,7 @@ export interface AppToast {
 export const ToastProviderRoot = ToastPrimitive.Provider;
 
 export const ToastViewport = () => (
-  <ToastPrimitive.Viewport className="fixed left-1/2 top-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
+  <ToastPrimitive.Viewport data-toast-viewport className="fixed left-1/2 top-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
 );
 
 export const ToastItem = ({
@@ -35,25 +35,25 @@ export const ToastItem = ({
   const borderColor = isError
     ? "border-red-300 bg-red-50"
     : isInfo
-      ? "border-blue-300 bg-blue-50"
+      ? "border-teal-300 bg-teal-50"
       : "border-emerald-300 bg-emerald-50";
 
   const textColor = isError
     ? "text-red-900"
     : isInfo
-      ? "text-blue-900"
+      ? "text-teal-900"
       : "text-emerald-900";
 
   const descColor = isError
     ? "text-red-800"
     : isInfo
-      ? "text-blue-800"
+      ? "text-teal-800"
       : "text-emerald-800";
 
   const closeColor = isError
     ? "text-red-700 hover:text-red-900"
     : isInfo
-      ? "text-blue-700 hover:text-blue-900"
+      ? "text-teal-700 hover:text-teal-900"
       : "text-emerald-700 hover:text-emerald-900";
 
   return (
@@ -61,7 +61,7 @@ export const ToastItem = ({
       open={open}
       onOpenChange={onOpenChange}
       duration={5000}
-      className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${borderColor}`}
+      className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg ${borderColor} data-[state=open]:animate-[toast-in_250ms_ease-out_forwards] data-[state=closed]:animate-[toast-out_200ms_ease-in_forwards]`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">

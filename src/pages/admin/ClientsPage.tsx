@@ -12,17 +12,19 @@ import {
   DownloadButton,
 } from "../../components/ui";
 import { Pill } from "../../components/Pill";
-import { AccordionTitle } from "../../components/AccordionTitle";
+import { StaffAccordionHeader } from "../../views/Accordion";
 import { Metadata } from "../../components/Metadata";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { findValueByNormalizedKey } from "../../utils/keyHeaderNormalisation";
 import { functions } from "../../services/firebase";
 import { toDate } from "../../utils/date";
-import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
+import { PaginatedFilterSection } from "../../views/Table";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
 import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
+import { useRecordsTab } from "../../hooks/useRecordsTab";
+import { usePaginationParams } from "../../hooks/usePaginationParams";
 
 export const AdminClientsPage = () => {
   useEffect(() => {
@@ -31,13 +33,16 @@ export const AdminClientsPage = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+
+  const tab = useRecordsTab();
+  const isHistory = tab === "history";
+
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<Record<
     string,
     unknown
   > | null>(null);
   const [deletingContract, setDeletingContract] = useState(false);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [clientFilters, setClientFilters] = useFilterParams();
   const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
@@ -108,23 +113,23 @@ export const AdminClientsPage = () => {
     setTimeout(() => refresh(), 2000);
   };
 
-  const onPrevPage = useCallback(() => setPage((p) => Math.max(0, p - 1)), []);
+  const onPrevPage = useCallback(() => setPage(Math.max(0, page - 1)), [page, setPage]);
   const onNextPage = useCallback(
-    () => setPage((p) => Math.min(totalPages - 1, p + 1)),
-    [totalPages],
+    () => setPage(Math.min(totalPages - 1, page + 1)),
+    [totalPages, page, setPage],
   );
-  const onGoToPage = useCallback((p: number) => setPage(p), []);
-  const onPageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setPage(0);
-  }, []);
+  const onGoToPage = useCallback((p: number) => setPage(p), [setPage]);
+  const onPageSizeChange = useCallback(
+    (size: number) => setPageSize(size),
+    [setPageSize],
+  );
 
   const handleClientFiltersChange = useCallback(
     (filters: typeof clientFilters) => {
       setPage(0);
       setClientFilters(filters);
     },
-    [setClientFilters],
+    [setClientFilters, setPage],
   );
 
   const onDeleteContract = async () => {
@@ -160,12 +165,46 @@ export const AdminClientsPage = () => {
   };
 
   return (
-    <div className="mx-auto space-y-4">
-      <PaginatedFilterSection
+    <div className="flex flex-1 flex-col space-y-4">
+      {isHistory ? (
+        <ImportHistory
+          type="agency"
+          cloudFunction="removeAgencies"
+          getPreviewNames={(rows) =>
+            rows.map(
+              (r) =>
+                r.business_name ||
+                r["Business Name"] ||
+                r["Company Name"] ||
+                r.Company_Name ||
+                r.company_name ||
+                findValueByNormalizedKey(
+                  r,
+                  "businessname",
+                  "companyname",
+                  "name",
+                  "agencyname",
+                  "organisation",
+                  "company",
+                ) ||
+                "Unknown",
+            )
+          }
+          onDeleteSuccess={handleDeleteSuccess}
+        />
+      ) : (
+        <>
+          <PaginatedFilterSection
         title="Clients"
         items={clients}
         loading={loading}
         totalResults={totalResults}
+        columnHeaders={[
+          "Company Name",
+          "Phone Number",
+          "Email",
+          "Account Manager",
+        ]}
         renderItem={(client, idx) => {
           const meta = (client as Record<string, unknown>).metadata as
             | Record<string, unknown>
@@ -173,20 +212,58 @@ export const AdminClientsPage = () => {
           const scName = meta?.signedContractName as string | undefined;
           const scUrl = meta?.signedContract as string | undefined;
           const scDate = meta?.signedContractAt as string | number | undefined;
+          const phone = findValueByNormalizedKey(
+            client,
+            "phone number",
+            "phonenumber",
+            "phone",
+            "mobile",
+            "telephone",
+            "tel",
+            "contact number",
+            "contactnumber",
+            "contact phone",
+            "contactphone",
+          );
+          const email = findValueByNormalizedKey(
+            client,
+            "contact email",
+            "contactemail",
+            "email",
+            "email address",
+            "emailaddress",
+          );
+          const accountManager = findValueByNormalizedKey(
+            client,
+            "account manager",
+            "accountmanager",
+            "account owner",
+            "accountowner",
+            "manager",
+          );
           return (
             <AccordionItem
               key={client.id as string}
               value={client.id as string}
               className="animate-cascade"
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-              title={
-                <div className="flex min-w-0 w-full items-center gap-2">
-                  <AccordionTitle className="leading-none">{getPrimaryLabel(client)}</AccordionTitle>
+              columns={[
+                <span className="tabular-nums">{idx + 1}</span>,
+                <StaffAccordionHeader name={getPrimaryLabel(client)}>
                   {scName && (
                     <Pill status="signed" icon={<FileSignature className="h-4 w-4" />} label="" />
                   )}
-                </div>
-              }
+                </StaffAccordionHeader>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {phone || "—"}
+                </span>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {email || "—"}
+                </span>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {accountManager || "—"}
+                </span>,
+              ]}
             >
               {scName && scUrl && (
                 <div className="mb-2 flex items-center gap-2">
@@ -256,33 +333,7 @@ export const AdminClientsPage = () => {
         onRightAccordionChange={onRightChange}
       />
 
-      <ImportHistory
-        type="agency"
-        cloudFunction="removeAgencies"
-        getPreviewNames={(rows) =>
-          rows.map(
-            (r) =>
-              r.business_name ||
-              r["Business Name"] ||
-              r["Company Name"] ||
-              r.Company_Name ||
-              r.company_name ||
-              findValueByNormalizedKey(
-                r,
-                "businessname",
-                "companyname",
-                "name",
-                "agencyname",
-                "organisation",
-                "company",
-              ) ||
-              "Unknown",
-          )
-        }
-        onDeleteSuccess={handleDeleteSuccess}
-      />
-
-      <DialogRoot
+          <DialogRoot
         open={confirmDeleteClient !== null}
         onOpenChange={(open) => {
           if (!open && !deletingContract) setConfirmDeleteClient(null);
@@ -320,6 +371,8 @@ export const AdminClientsPage = () => {
           </div>
         </DialogContent>
       </DialogRoot>
+        </>
+      )}
     </div>
   );
 };

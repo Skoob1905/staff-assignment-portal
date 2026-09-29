@@ -3,40 +3,45 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
-import { AccordionItem } from "./ui";
-import { useAuth } from "../context/AuthProvider";
-import { useAppStore } from "../stores/appStore";
-import { formatInvitedAt } from "../utils/date";
-import { PaginatedFilterSection } from "./PaginatedFilterSection";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { useFilterParams } from "../hooks/useFilterParams";
-import { getStaffName } from "../utils/keyHeaderNormalisation";
-import { FileInteractionButtons } from "./FileInteractionButtons";
-import { Metadata } from "./Metadata";
-import { Pill } from "./Pill";
-import { AccordionTitle } from "./AccordionTitle";
+import { AccordionItem } from "../../components/ui";
+import { useAuth } from "../../context/AuthProvider";
+import { useAppStore } from "../../stores/appStore";
+import { formatInvitedAt } from "../../utils/date";
+import { PaginatedFilterSection, type ColumnHeader } from "./PaginatedFilterSection";
+import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
+import { useFilterParams } from "../../hooks/useFilterParams";
+import { usePaginationParams } from "../../hooks/usePaginationParams";
+import {
+  getStaffName,
+  getStaffEmail,
+  findValueByNormalizedKey,
+} from "../../utils/keyHeaderNormalisation";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
+import { Metadata } from "../../components/Metadata";
+import { Pill } from "../../components/Pill";
+import { StaffAccordionHeader } from "../Accordion";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
-} from "../utils/loginsFilter";
+} from "../../utils/loginsFilter";
 import { FileText } from "lucide-react";
 import type {
   Agency,
   BulkStaff,
   FilterKeyMap,
   StaffFilters,
-} from "../types/domain";
+} from "../../types/domain";
 
-interface StaffListSectionProps {
+interface TableViewProps {
   view: "admin" | "client";
   targetAgencyId?: string;
   action?: ReactNode;
   refreshTrigger?: number;
   renderItem?: (item: BulkStaff, index: number) => ReactNode;
   agencies?: Agency[];
+  columnHeaders?: ColumnHeader[];
 
   leftAccordionValue?: string;
   onLeftAccordionChange?: (value: string) => void;
@@ -44,25 +49,25 @@ interface StaffListSectionProps {
   onRightAccordionChange?: (value: string) => void;
 }
 
-export const StaffListSection = ({
+export const TableView = ({
   view,
   targetAgencyId,
   action,
   refreshTrigger,
   renderItem,
   agencies,
+  columnHeaders,
 
   leftAccordionValue,
   onLeftAccordionChange,
   rightAccordionValue,
   onRightAccordionChange,
-}: StaffListSectionProps) => {
+}: TableViewProps) => {
   const { appUser } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const isClient = view === "client";
   const assignedToId = targetAgencyId || appUser?.agencyId || "";
   const staffKeyMap = useMemo<FilterKeyMap>(
@@ -114,12 +119,18 @@ export const StaffListSection = ({
     loadTags().catch(() => {});
   }, [loadTags]);
 
-  const filterTagsMap = useMemo(() => {
-    if (!facetCounts?.tags) return tagsMap;
-    return Object.fromEntries(
-      Object.entries(tagsMap).filter(([id]) => (facetCounts.tags[id] ?? 0) > 0),
-    );
-  }, [facetCounts, tagsMap]);
+  // Admins get a count for every tag (0 when unused); clients only for the
+  // tags present on their assigned staff (the query is scoped to their agency).
+  const tagCountsForFilter = useMemo(() => {
+    if (!isClient) {
+      const counts: Record<string, number> = {};
+      for (const id of Object.keys(tagsMap)) {
+        counts[id] = facetCounts?.tags?.[id] ?? 0;
+      }
+      return counts;
+    }
+    return facetCounts?.tags;
+  }, [isClient, tagsMap, facetCounts]);
 
   const filterAgencies = useMemo(() => {
     if (!agencies || !facetCounts?.["metadata.assignedToId"]) return agencies;
@@ -132,21 +143,29 @@ export const StaffListSection = ({
       setPage(0);
       setFilters(newFilters);
     },
-    [setFilters],
+    [setFilters, setPage],
   );
 
   const defaultRenderItem = useCallback(
     (member: BulkStaff, idx: number) => {
       const displayName = getStaffName(member);
+      const niNumber = findValueByNormalizedKey(
+        member as unknown as Record<string, unknown>,
+        "ni number",
+      );
+      const jobTitle = findValueByNormalizedKey(
+        member as unknown as Record<string, unknown>,
+        "job title",
+      );
       return (
         <AccordionItem
           key={member.id}
           value={member.id}
           className="animate-cascade"
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-          title={
-            <div className="flex min-w-0 items-center gap-2">
-              <AccordionTitle>{displayName}</AccordionTitle>
+          columns={[
+            <span className="tabular-nums">{idx + 1}</span>,
+            <StaffAccordionHeader name={displayName}>
               {member.metadata?.cv && member.metadata.cv.length > 0 && (
                 <Pill
                   status="cv"
@@ -154,8 +173,20 @@ export const StaffListSection = ({
                   label=""
                 />
               )}
-            </div>
-          }
+            </StaffAccordionHeader>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {getStaffEmail(member) || "—"}
+            </span>,
+            <span className="block overflow-x-auto whitespace-nowrap text-sm text-[var(--muted-foreground)]">
+              {member.metadata?.assignedToName || "—"}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {niNumber || "—"}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {jobTitle || "—"}
+            </span>,
+          ]}
         >
           {member.tags && member.tags.length > 0 && (
             <Metadata
@@ -248,17 +279,16 @@ export const StaffListSection = ({
       totalPages={totalPages}
       totalResults={totalResults}
       pageSize={pageSize}
-      onPrevPage={() => setPage((p) => Math.max(0, p - 1))}
-      onNextPage={() => setPage((p) => p + 1)}
+      onPrevPage={() => setPage(Math.max(0, page - 1))}
+      onNextPage={() => setPage(page + 1)}
       onGoToPage={setPage}
-      onPageSizeChange={(s) => {
-        setPageSize(s);
-        setPage(0);
-      }}
+      onPageSizeChange={setPageSize}
       filters={filters}
       onFiltersChange={handleFiltersChange}
-      tags={filterTagsMap}
-      tagCounts={facetCounts?.tags}
+      nameFilterLabel="Name, Email, NI Number"
+      tags={tagsMap}
+      tagCounts={tagCountsForFilter}
+      showAllTags={!isClient}
       agencies={filterAgencies}
       enableAgencyFilter={!isClient}
       emptyMessage={
@@ -266,6 +296,9 @@ export const StaffListSection = ({
       }
       action={!isClient ? action : undefined}
       renderItem={renderItem ?? defaultRenderItem}
+      columnHeaders={
+        columnHeaders ?? ["Name", "Email", "Assigned To", "NI Number", "Title"]
+      }
       leftAccordionValue={leftAccordionValue}
       onLeftAccordionChange={onLeftAccordionChange}
       rightAccordionValue={rightAccordionValue}

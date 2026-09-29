@@ -34,9 +34,9 @@ export const pillConfig: Record<PillStatus, PillConfig> = {
     label: "Review",
   },
   info: {
-    bg: "bg-blue-100",
-    border: "border-blue-300",
-    text: "text-blue-700",
+    bg: "bg-teal-100",
+    border: "border-teal-300",
+    text: "text-teal-700",
     label: "Info",
   },
   signed: {
@@ -46,9 +46,9 @@ export const pillConfig: Record<PillStatus, PillConfig> = {
     label: "Signed",
   },
   cv: {
-    bg: "bg-blue-100",
-    border: "border-blue-300",
-    text: "text-blue-700",
+    bg: "bg-teal-100",
+    border: "border-teal-300",
+    text: "text-teal-700",
     label: "",
   },
   new: {

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { Plus } from "lucide-react";
 import {
-  AccordionItem,
   Button,
   DeleteButton,
   DialogContent,
@@ -14,18 +13,17 @@ import {
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
-import { Metadata } from "../../components/Metadata";
 import { useAppStore } from "../../stores/appStore";
 import { functions } from "../../services/firebase";
 import { formatInvitedAt } from "../../utils/date";
 import { getCompanyName } from "../../utils/company";
 import { Muted } from "../../config/typography";
 import { config } from "../../config";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
+import { PaginatedFilterSection } from "../../views/Table";
 import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
+import { usePaginationParams } from "../../hooks/usePaginationParams";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
@@ -84,8 +82,7 @@ export const AdminPage = () => {
   });
 
   const [loginsFilters, setLoginsFilters] = useFilterParams();
-  const [loginsPage, setLoginsPage] = useState(0);
-  const [loginsPageSize, setLoginsPageSize] = useState(50);
+  const { page: loginsPage, pageSize: loginsPageSize, setPage: setLoginsPage, setPageSize: setLoginsPageSize } = usePaginationParams();
   const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   const loginsKeyMap = useMemo<FilterKeyMap>(
@@ -265,11 +262,11 @@ export const AdminPage = () => {
       setLoginsPage(0);
       setLoginsFilters(filters);
     },
-    [setLoginsFilters],
+    [setLoginsFilters, setLoginsPage],
   );
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex flex-1 flex-col space-y-4">
       <PaginatedFilterSection
         title="Users"
         items={logins}
@@ -278,13 +275,10 @@ export const AdminPage = () => {
         totalPages={loginsTotalPages}
         totalResults={loginsTotalResults}
         pageSize={loginsPageSize}
-        onPrevPage={() => setLoginsPage((p) => Math.max(0, p - 1))}
-        onNextPage={() => setLoginsPage((p) => p + 1)}
+        onPrevPage={() => setLoginsPage(Math.max(0, loginsPage - 1))}
+        onNextPage={() => setLoginsPage(loginsPage + 1)}
         onGoToPage={setLoginsPage}
-        onPageSizeChange={(s) => {
-          setLoginsPageSize(s);
-          setLoginsPage(0);
-        }}
+        onPageSizeChange={setLoginsPageSize}
         filterKeys={loginsKeyMap}
         filters={loginsFilters}
         onFiltersChange={handleLoginsFiltersChange}
@@ -297,6 +291,14 @@ export const AdminPage = () => {
         rightAccordionValue={rightValue}
         onRightAccordionChange={onRightChange}
         emptyMessage="No users created yet."
+        expandable={false}
+        columnHeaders={[
+          "Email",
+          "Client",
+          "Invited By",
+          "Invited At",
+          "Actions",
+        ]}
         action={
           <Button
             type="button"
@@ -307,7 +309,7 @@ export const AdminPage = () => {
             New Login
           </Button>
         }
-        renderItem={(user, idx) => {
+        renderItem={(user) => {
           const userRecord = user as {
             id: string;
             email?: string;
@@ -327,46 +329,30 @@ export const AdminPage = () => {
             userRecord.invitedByUid ||
             "";
           return (
-            <AccordionItem
-              key={userRecord.id}
-              value={userRecord.id}
-              className="animate-cascade"
-              style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-              title={
-                <AccordionTitle className="pr-4">
-                  {userRecord.email || userRecord.id}
-                </AccordionTitle>
-              }
-              actions={
-                <span className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)] whitespace-nowrap">
-                  {companyName}
-                </span>
-              }
-            >
-              <div>
-                <Metadata
-                  title="Invited by"
-                  className="animate-cascade"
-                  style={{ animationDelay: "0ms" }}
-                  value={
-                    <>
-                      {invitedByEmail} at{" "}
-                      {formatInvitedAt(userRecord.invitedAt)}
-                    </>
-                  }
-                />
-              </div>
-              <DeleteButton
-                className="mt-2 animate-cascade"
-                style={{ animationDelay: "12ms" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteTarget(user);
-                }}
-              >
-                Revoke
-              </DeleteButton>
-            </AccordionItem>
+            <>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-[var(--foreground)]">
+                {userRecord.email || userRecord.id}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-[var(--muted-foreground)]">
+                {companyName}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-[var(--muted-foreground)]">
+                {invitedByEmail || "—"}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-[var(--muted-foreground)]">
+                {formatInvitedAt(userRecord.invitedAt)}
+              </span>
+              <span className="flex min-w-0 flex-1 items-center">
+                <DeleteButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(user);
+                  }}
+                >
+                  Revoke
+                </DeleteButton>
+              </span>
+            </>
           );
         }}
       />

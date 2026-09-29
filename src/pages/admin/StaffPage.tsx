@@ -7,9 +7,10 @@ import { FileInteractionButtons } from "../../components/FileInteractionButtons"
 import { ImportHistory } from "../../components/ImportHistory";
 import { Metadata } from "../../components/Metadata";
 import { Pill } from "../../components/Pill";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { StaffListSection } from "../../components/StaffListSection";
+import { TableView } from "../../views/Table";
+import { StaffAccordionHeader } from "../../views/Accordion";
 import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
+import { useRecordsTab } from "../../hooks/useRecordsTab";
 import {
   AccordionItem,
   ActionButton,
@@ -26,7 +27,9 @@ import { db, functions } from "../../services/firebase";
 import { getCompanyName } from "../../utils/company";
 import {
   getStaffName,
+  getStaffEmail,
   getStaffNameFromRawRecord,
+  findValueByNormalizedKey,
 } from "../../utils/keyHeaderNormalisation";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { Muted } from "../../config/typography";
@@ -39,6 +42,9 @@ export const AdminStaffPage = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+
+  const tab = useRecordsTab();
+  const isHistory = tab === "history";
 
   const tags = useAppStore((s) => s.tags);
   const addTag = useAppStore((s) => s.addTag);
@@ -213,11 +219,20 @@ export const AdminStaffPage = () => {
   };
 
   return (
-    <div className="mx-auto space-y-4">
-      <StaffListSection
+    <div className="flex flex-1 flex-col space-y-4">
+      {!isHistory && (
+        <>
+          <TableView
         view="admin"
         refreshTrigger={staffRefreshTrigger}
         agencies={companies as unknown as Agency[]}
+        columnHeaders={[
+          "Name",
+          { label: "Email", className: "flex-[0.7]" },
+          { label: "Assigned To", className: "flex-[0.7]" },
+          "NI Number",
+          "Title",
+        ]}
         leftAccordionValue={leftValue}
         onLeftAccordionChange={onLeftChange}
         rightAccordionValue={rightValue}
@@ -228,67 +243,97 @@ export const AdminStaffPage = () => {
             value={member.id}
             className="animate-cascade"
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-            title={
-              <div className="flex min-w-0 items-center gap-2">
-                <AccordionTitle>{getStaffName(member)}</AccordionTitle>
+            columns={[
+              <span className="tabular-nums">{idx + 1}</span>,
+              <StaffAccordionHeader name={getStaffName(member)}>
                 {member.metadata?.cv && member.metadata.cv.length > 0 && (
                   <Pill status="cv" icon={<FileText className="h-4 w-4" />} label="" />
                 )}
-              </div>
-            }
-            actions={
-              <>
-                {member.metadata?.assignedToName ? (
-                  <span className="group inline-flex shrink-0 items-center text-xs sm:text-sm text-[var(--muted-foreground)]">
-                    <span className="truncate max-w-[200px] transition-all duration-200 group-hover:mr-1">
-                      {member.metadata.assignedToName}
-                    </span>
-                    <span className="hidden overflow-hidden w-0 transition-all duration-200 group-hover:w-6 sm:inline-flex">
-                      <ActionButton
-                        variant="delete"
-                        size="md"
-                        ariaLabel="Unassign staff"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUnassignTarget(member);
-                        }}
-                        className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                      />
-                    </span>
+              </StaffAccordionHeader>,
+              {
+                node: (
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {getStaffEmail(member) || "—"}
                   </span>
-                ) : (
-                  <span
-                    className="hidden sm:inline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {activeAssignMenu === member.id ? (
-                      <ClientsDropdown
-                        disabled={assigningStaffId === member.id}
-                        value=""
-                        onChange={(value) => {
-                          if (value) handleAssign(member.id, value);
-                          setActiveAssignMenu(null);
-                        }}
-                        className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                        placeholder="Select client..."
-                        autoFocus
-                        onBlur={() => setActiveAssignMenu(null)}
-                      />
-                    ) : assigningStaffId === member.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setActiveAssignMenu(member.id)}
-                        className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
+                ),
+                className: "flex-[0.7]",
+              },
+              {
+                node: (
+                  <span className="group flex min-w-0 items-center gap-1.5 text-sm text-[var(--muted-foreground)]">
+                    {member.metadata?.assignedToName ? (
+                      <>
+                        <span className="min-w-0 overflow-x-auto whitespace-nowrap">
+                          {member.metadata.assignedToName}
+                        </span>
+                        <span
+                          className="shrink-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ActionButton
+                            variant="delete"
+                            size="md"
+                            ariaLabel="Unassign staff"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnassignTarget(member);
+                            }}
+                          />
+                        </span>
+                      </>
+                    ) : appUser?.role === "admin" ? (
+                      <span
+                        className="inline-flex items-center"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Pen className="h-3.5 w-3.5" />
-                      </button>
+                        {activeAssignMenu === member.id ? (
+                          <ClientsDropdown
+                            disabled={assigningStaffId === member.id}
+                            value=""
+                            onChange={(value) => {
+                              if (value) handleAssign(member.id, value);
+                              setActiveAssignMenu(null);
+                            }}
+                            className="h-7 w-full rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                            placeholder="Select client..."
+                            autoFocus
+                            onBlur={() => setActiveAssignMenu(null)}
+                          />
+                        ) : assigningStaffId === member.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveAssignMenu(member.id);
+                            }}
+                            className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
+                          >
+                            <Pen className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </span>
+                    ) : (
+                      "—"
                     )}
                   </span>
-                )}
-              </>
-            }
+                ),
+                className: "flex-[0.7]",
+              },
+              <span className="text-sm text-[var(--muted-foreground)]">
+                {findValueByNormalizedKey(
+                  member as unknown as Record<string, unknown>,
+                  "ni number",
+                ) || "—"}
+              </span>,
+              <span className="text-sm text-[var(--muted-foreground)]">
+                {findValueByNormalizedKey(
+                  member as unknown as Record<string, unknown>,
+                  "job title",
+                ) || "—"}
+              </span>,
+            ]}
           >
             {(appUser?.role === "admin" || (member.tags?.length ?? 0) > 0) && (
               <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
@@ -552,13 +597,17 @@ export const AdminStaffPage = () => {
           </div>
         </DialogContent>
       </DialogRoot>
+        </>
+      )}
 
-      <ImportHistory
-        type="staff"
-        cloudFunction="removeStaffImport"
-        getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
-        onDeleteSuccess={handleDeleteSuccess}
-      />
+      {isHistory && (
+        <ImportHistory
+          type="staff"
+          cloudFunction="removeStaffImport"
+          getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
+          onDeleteSuccess={handleDeleteSuccess}
+        />
+      )}
     </div>
   );
 };

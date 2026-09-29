@@ -17,7 +17,8 @@ export const Navbar = () => {
       style={{
         backgroundColor: "var(--header-bg)",
         borderColor: "transparent",
-        borderImage: "linear-gradient(90deg, #99f6e4, #93c5fd, #99f6e4) 1",
+        borderImage:
+          "linear-gradient(90deg, var(--primary-300), var(--primary), var(--primary-300)) 1",
       }}
     >
       <GlobalBanner />

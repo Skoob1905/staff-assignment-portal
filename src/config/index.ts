@@ -23,6 +23,7 @@ import sliverNavbar from "../assets/sliver/navbar.jpg";
 import sliverLogin from "../assets/sliver/login.jpg";
 import sliverLoading from "../assets/sliver/loading.jpg";
 import type { Config, Theme } from "./types";
+import { colors } from "./colors";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
 export const slug = raw.toLowerCase();
@@ -34,8 +35,8 @@ const unifiedTheme: Theme = {
   cardForeground: "#0F172A",
   muted: "#F1F5F9",
   mutedForeground: "#64748B",
-  primary: "#2563EB",
-  primaryForeground: "#FFFFFF",
+  primary: colors.primary,
+  primaryForeground: colors.primaryForeground,
   border: "#E2E8F0",
   destructive: "#DC2626",
   headerBg: "#FFFFFF",
@@ -141,6 +142,12 @@ export function applyTheme() {
   for (const [key, cssVar] of Object.entries(cssVarMap)) {
     root.style.setProperty(cssVar, config.theme[key as keyof Theme]);
   }
+  // Extra brand tokens derived from the single `colors` source.
+  root.style.setProperty("--primary-100", colors.primarySoft);
+  root.style.setProperty("--primary-hover", colors.primaryHover);
+  root.style.setProperty("--primary-tint", colors.primaryTint);
+  root.style.setProperty("--primary-border", colors.primaryBorder);
+  root.style.setProperty("--primary-shadow", colors.primaryShadow);
 }
 
 applyTheme();

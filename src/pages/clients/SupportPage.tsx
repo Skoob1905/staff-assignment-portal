@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Section } from "../../components/Section";
+import { Content } from "../../components/Content";
 import { Body, Caption } from "../../config/typography";
 
 const MAX_CHARS = 500;
@@ -44,8 +44,8 @@ export const SupportPage = () => {
   const remaining = MAX_CHARS - message.length;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Section title="Got a question?">
+    <div className="flex flex-1 flex-col space-y-4">
+      <Content title="Got a question?">
         <div className="mb-2">
           <Body>Send us a message and we'll get back to you.</Body>
         </div>
@@ -61,7 +61,7 @@ export const SupportPage = () => {
             }}
             placeholder="Type your message here..."
             rows={6}
-            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-bg)] p-3 pb-7 text-sm text-[var(--foreground)] placeholder:text-[var(--placeholder)] transition-colors duration-200 focus:border-[#93c5fd] focus:outline-none focus:ring-1 focus:ring-[#93c5fd] resize-none"
+            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-bg)] p-3 pb-7 text-sm text-[var(--foreground)] placeholder:text-[var(--placeholder)] transition-colors duration-200 focus:border-[var(--primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)] resize-none"
           />
           <Caption className="absolute bottom-2 right-3 pointer-events-none">
             {remaining} characters remaining
@@ -83,7 +83,7 @@ export const SupportPage = () => {
             Send on WhatsApp
           </button>
         </div>
-      </Section>
+      </Content>
     </div>
   );
 };
