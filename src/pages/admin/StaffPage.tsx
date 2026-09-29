@@ -27,6 +27,7 @@ import { db, functions } from "../../services/firebase";
 import { getCompanyName } from "../../utils/company";
 import {
   getStaffName,
+  getStaffEmail,
   getStaffNameFromRawRecord,
   findValueByNormalizedKey,
 } from "../../utils/keyHeaderNormalisation";
@@ -252,17 +253,17 @@ export const AdminStaffPage = () => {
               {
                 node: (
                   <span className="text-sm text-[var(--muted-foreground)]">
-                    {member.email || "—"}
+                    {getStaffEmail(member) || "—"}
                   </span>
                 ),
                 className: "flex-[0.7]",
               },
               {
                 node: (
-                  <span className="group inline-flex min-w-0 items-center gap-1.5 text-sm text-[var(--muted-foreground)]">
+                  <span className="group flex min-w-0 items-center gap-1.5 text-sm text-[var(--muted-foreground)]">
                     {member.metadata?.assignedToName ? (
                       <>
-                        <span className="truncate">
+                        <span className="min-w-0 overflow-x-auto whitespace-nowrap">
                           {member.metadata.assignedToName}
                         </span>
                         <span

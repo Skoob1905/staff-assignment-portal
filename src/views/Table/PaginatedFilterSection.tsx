@@ -37,6 +37,7 @@ interface PaginatedFilterSectionProps<T> {
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
   nameFilterLabel?: string;
+  showAllTags?: boolean;
 
   tags?: Record<string, string>;
   tagCounts?: Record<string, number>;
@@ -84,6 +85,7 @@ export const PaginatedFilterSection = <T,>({
   enableTagFilter = true,
   enableAgencyFilter = false,
   nameFilterLabel,
+  showAllTags = false,
 
   tags,
   tagCounts,
@@ -275,6 +277,7 @@ export const PaginatedFilterSection = <T,>({
         enableTag={enableTagFilter}
         enableAgency={enableAgencyFilter}
         nameLabel={nameFilterLabel}
+        showAllTags={showAllTags}
       />
     </>
   );

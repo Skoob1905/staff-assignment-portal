@@ -107,6 +107,25 @@ export function getStaffName(staff: BulkStaff): string {
   return staff.email || "";
 }
 
+/**
+ * Resolves the staff member's email, tolerating the various CSV header
+ * spellings (e.g. "Email", "Email Address", "E-mail").
+ */
+export function getStaffEmail(staff: BulkStaff): string {
+  const raw = staff as unknown as Record<string, unknown>;
+  return (
+    findValueByNormalizedKey(
+      raw,
+      "email",
+      "email address",
+      "emailaddress",
+      "e mail",
+    ) ||
+    staff.email ||
+    ""
+  );
+}
+
 export function getStaffNameFromRawRecord(
   record: Record<string, string>,
 ): string {

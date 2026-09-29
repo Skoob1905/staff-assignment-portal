@@ -201,9 +201,9 @@ export const AdminClientsPage = () => {
         totalResults={totalResults}
         columnHeaders={[
           "Company Name",
-          "Email Address",
-          "Address Line 1",
-          "Address Line 2",
+          "Phone Number",
+          "Email",
+          "Account Manager",
         ]}
         renderItem={(client, idx) => {
           const meta = (client as Record<string, unknown>).metadata as
@@ -212,24 +212,34 @@ export const AdminClientsPage = () => {
           const scName = meta?.signedContractName as string | undefined;
           const scUrl = meta?.signedContract as string | undefined;
           const scDate = meta?.signedContractAt as string | number | undefined;
+          const phone = findValueByNormalizedKey(
+            client,
+            "phone number",
+            "phonenumber",
+            "phone",
+            "mobile",
+            "telephone",
+            "tel",
+            "contact number",
+            "contactnumber",
+            "contact phone",
+            "contactphone",
+          );
           const email = findValueByNormalizedKey(
             client,
+            "contact email",
+            "contactemail",
             "email",
+            "email address",
             "emailaddress",
           );
-          const addressLine1 = findValueByNormalizedKey(
+          const accountManager = findValueByNormalizedKey(
             client,
-            "address line 1",
-            "addressline1",
-            "address1",
-            "first line of address",
-          );
-          const addressLine2 = findValueByNormalizedKey(
-            client,
-            "address line 2",
-            "addressline2",
-            "address2",
-            "second line of address",
+            "account manager",
+            "accountmanager",
+            "account owner",
+            "accountowner",
+            "manager",
           );
           return (
             <AccordionItem
@@ -245,13 +255,13 @@ export const AdminClientsPage = () => {
                   )}
                 </StaffAccordionHeader>,
                 <span className="text-sm text-[var(--muted-foreground)]">
+                  {phone || "—"}
+                </span>,
+                <span className="text-sm text-[var(--muted-foreground)]">
                   {email || "—"}
                 </span>,
                 <span className="text-sm text-[var(--muted-foreground)]">
-                  {addressLine1 || "—"}
-                </span>,
-                <span className="text-sm text-[var(--muted-foreground)]">
-                  {addressLine2 || "—"}
+                  {accountManager || "—"}
                 </span>,
               ]}
             >

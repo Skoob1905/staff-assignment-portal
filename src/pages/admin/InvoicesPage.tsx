@@ -98,6 +98,7 @@ export const AdminInvoicesPage = () => {
         expandable={false}
         columnHeaders={[
           "Name",
+          "Client",
           "Amount",
           "Sent On",
           "Due On",
@@ -113,6 +114,9 @@ export const AdminInvoicesPage = () => {
             <>
               <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                 {invoice.fileName}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {invoice.agencyName || "—"}
               </span>
               <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium">
                 £{amount}

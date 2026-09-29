@@ -15,6 +15,7 @@ import { useFilterParams } from "../../hooks/useFilterParams";
 import { usePaginationParams } from "../../hooks/usePaginationParams";
 import {
   getStaffName,
+  getStaffEmail,
   findValueByNormalizedKey,
 } from "../../utils/keyHeaderNormalisation";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
@@ -118,12 +119,18 @@ export const TableView = ({
     loadTags().catch(() => {});
   }, [loadTags]);
 
-  const filterTagsMap = useMemo(() => {
-    if (!facetCounts?.tags) return tagsMap;
-    return Object.fromEntries(
-      Object.entries(tagsMap).filter(([id]) => (facetCounts.tags[id] ?? 0) > 0),
-    );
-  }, [facetCounts, tagsMap]);
+  // Admins get a count for every tag (0 when unused); clients only for the
+  // tags present on their assigned staff (the query is scoped to their agency).
+  const tagCountsForFilter = useMemo(() => {
+    if (!isClient) {
+      const counts: Record<string, number> = {};
+      for (const id of Object.keys(tagsMap)) {
+        counts[id] = facetCounts?.tags?.[id] ?? 0;
+      }
+      return counts;
+    }
+    return facetCounts?.tags;
+  }, [isClient, tagsMap, facetCounts]);
 
   const filterAgencies = useMemo(() => {
     if (!agencies || !facetCounts?.["metadata.assignedToId"]) return agencies;
@@ -168,9 +175,9 @@ export const TableView = ({
               )}
             </StaffAccordionHeader>,
             <span className="text-sm text-[var(--muted-foreground)]">
-              {member.email || "—"}
+              {getStaffEmail(member) || "—"}
             </span>,
-            <span className="text-sm text-[var(--muted-foreground)]">
+            <span className="block overflow-x-auto whitespace-nowrap text-sm text-[var(--muted-foreground)]">
               {member.metadata?.assignedToName || "—"}
             </span>,
             <span className="text-sm text-[var(--muted-foreground)]">
@@ -279,8 +286,9 @@ export const TableView = ({
       filters={filters}
       onFiltersChange={handleFiltersChange}
       nameFilterLabel="Name, Email, NI Number"
-      tags={filterTagsMap}
-      tagCounts={facetCounts?.tags}
+      tags={tagsMap}
+      tagCounts={tagCountsForFilter}
+      showAllTags={!isClient}
       agencies={filterAgencies}
       enableAgencyFilter={!isClient}
       emptyMessage={

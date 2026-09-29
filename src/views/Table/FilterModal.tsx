@@ -25,6 +25,7 @@ interface FilterModalProps {
   enableTag?: boolean;
   enableAgency?: boolean;
   nameLabel?: string;
+  showAllTags?: boolean;
 }
 
 export const FilterModal = ({
@@ -40,6 +41,7 @@ export const FilterModal = ({
   enableTag = false,
   enableAgency = false,
   nameLabel = "Name",
+  showAllTags = false,
 }: FilterModalProps) => {
   const [name, setName] = useState(filters.name);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
@@ -60,10 +62,12 @@ export const FilterModal = ({
 
   const tagKeys = useMemo(
     () =>
-      tagCounts
-        ? Object.keys(tags).filter((id) => (tagCounts[id] ?? 0) > 0)
-        : [],
-    [tags, tagCounts],
+      showAllTags
+        ? Object.keys(tags)
+        : tagCounts
+          ? Object.keys(tags).filter((id) => (tagCounts[id] ?? 0) > 0)
+          : Object.keys(tags),
+    [tags, tagCounts, showAllTags],
   );
 
   const agencyList = useMemo(() => {
