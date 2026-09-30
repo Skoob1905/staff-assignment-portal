@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hasNIColumn, getNINumber, normalizeKey, hasBusinessNameColumn, getBusinessName } from "./keyHeaderNormalisation";
+import { hasNIColumn, getNINumber, getStaffNINumber, normalizeKey, hasBusinessNameColumn, getBusinessName } from "./keyHeaderNormalisation";
 
 describe("hasNIColumn", () => {
   it("returns true for 'NI Number'", () => {
@@ -94,6 +94,22 @@ describe("getNINumber", () => {
 
   it("returns empty string for empty row", () => {
     expect(getNINumber({})).toBe("");
+  });
+});
+
+describe("getStaffNINumber", () => {
+  it("resolves an 'NI No' header", () => {
+    expect(getStaffNINumber({ "NI No": "AB123456C" } as never)).toBe("AB123456C");
+  });
+
+  it("resolves an 'NI Number' header", () => {
+    expect(getStaffNINumber({ "NI Number": "AB123456C" } as never)).toBe(
+      "AB123456C",
+    );
+  });
+
+  it("returns empty string when there is no NI field", () => {
+    expect(getStaffNINumber({ Name: "John" } as never)).toBe("");
   });
 });
 

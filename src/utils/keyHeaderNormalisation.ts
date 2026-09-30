@@ -126,6 +126,20 @@ export function getStaffEmail(staff: BulkStaff): string {
   );
 }
 
+/**
+ * Resolves the staff member's NI number, tolerating the various CSV header
+ * spellings (e.g. "NI Number", "NI No", "NINO", "National Insurance").
+ */
+export function getStaffNINumber(staff: BulkStaff): string {
+  const raw = staff as unknown as Record<string, unknown>;
+  for (const [key, value] of Object.entries(raw)) {
+    if (NI_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
+      return String(value ?? "");
+    }
+  }
+  return "";
+}
+
 export function getStaffNameFromRawRecord(
   record: Record<string, string>,
 ): string {
