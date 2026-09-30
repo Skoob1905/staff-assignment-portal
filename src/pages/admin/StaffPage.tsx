@@ -28,6 +28,7 @@ import { getCompanyName } from "../../utils/company";
 import {
   getStaffName,
   getStaffEmail,
+  getStaffNINumber,
   getStaffNameFromRawRecord,
   findValueByNormalizedKey,
 } from "../../utils/keyHeaderNormalisation";
@@ -322,10 +323,7 @@ export const AdminStaffPage = () => {
                 className: "flex-[0.7]",
               },
               <span className="text-sm text-[var(--muted-foreground)]">
-                {findValueByNormalizedKey(
-                  member as unknown as Record<string, unknown>,
-                  "ni number",
-                ) || "—"}
+                {getStaffNINumber(member) || "—"}
               </span>,
               <span className="text-sm text-[var(--muted-foreground)]">
                 {findValueByNormalizedKey(

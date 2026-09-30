@@ -16,6 +16,7 @@ import { usePaginationParams } from "../../hooks/usePaginationParams";
 import {
   getStaffName,
   getStaffEmail,
+  getStaffNINumber,
   findValueByNormalizedKey,
 } from "../../utils/keyHeaderNormalisation";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
@@ -149,10 +150,7 @@ export const TableView = ({
   const defaultRenderItem = useCallback(
     (member: BulkStaff, idx: number) => {
       const displayName = getStaffName(member);
-      const niNumber = findValueByNormalizedKey(
-        member as unknown as Record<string, unknown>,
-        "ni number",
-      );
+      const niNumber = getStaffNINumber(member);
       const jobTitle = findValueByNormalizedKey(
         member as unknown as Record<string, unknown>,
         "job title",
