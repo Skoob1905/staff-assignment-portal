@@ -1,4 +1,3 @@
-import { X } from "lucide-react";
 import { logoutUser } from "../../services/authService";
 import { config } from "../../config";
 import { NavbarItems } from "./items";
@@ -26,13 +25,6 @@ export const Navbar = ({ open, onClose }: NavbarProps) => {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 rounded-md p-1 text-[var(--muted-foreground)] hover:bg-[var(--muted)] md:hidden"
-        >
-          <X className="size-5" />
-        </button>
-
         <div className="flex justify-center px-4 pt-6 pb-10">
           <a
             href={config.homepage || "/"}
@@ -49,6 +41,7 @@ export const Navbar = ({ open, onClose }: NavbarProps) => {
 
         <nav className="flex flex-1 flex-col gap-3 px-2">
           <NavbarItems
+            onNavigate={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive

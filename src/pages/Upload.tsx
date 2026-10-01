@@ -303,7 +303,7 @@ export const UploadPage = () => {
   );
 
   return (
-    <div className="flex flex-1 flex-col space-y-4">
+    <div className="flex min-w-0 flex-1 flex-col space-y-4">
       <Content title="Upload">
         <div className="flex flex-wrap justify-center gap-3">
           {types.map((type) => (

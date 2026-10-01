@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { ActionButton, Button } from "../../components/ui";
+import { AccordionItem, ActionButton, Button } from "../../components/ui";
 import {
   DialogContent,
   DialogRoot,
@@ -78,7 +78,7 @@ export const AdminInvoicesPage = () => {
   };
 
   return (
-    <div className="flex flex-1 flex-col space-y-4">
+    <div className="flex min-w-0 flex-1 flex-col space-y-4">
       <PaginatedFilterSection<InvoiceEntry>
         title="Invoices"
         items={pagedInvoices}
@@ -95,7 +95,6 @@ export const AdminInvoicesPage = () => {
         onFiltersChange={() => {}}
         enableNameFilter={false}
         enableTagFilter={false}
-        expandable={false}
         columnHeaders={[
           "Name",
           "Client",
@@ -106,63 +105,79 @@ export const AdminInvoicesPage = () => {
           "Actions",
         ]}
         emptyMessage="No invoices found."
-        renderItem={(invoice) => {
+        renderItem={(invoice, idx) => {
           const isPaid = invoice.status === "paid";
           const amount = parseFloat(invoice.amountPayable).toFixed(2);
+          const sentOn = new Date(invoice.uploadedAt).toLocaleDateString(
+            "en-GB",
+            { day: "numeric", month: "short", year: "numeric" },
+          );
+          const dueOn = new Date(invoice.dueDate).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
 
           return (
-            <>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                {invoice.fileName}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
-                {invoice.agencyName || "—"}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium">
-                £{amount}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
-                {new Date(invoice.uploadedAt).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
-                {new Date(invoice.dueDate).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-              <span
-                className={`min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium ${
-                  isPaid ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {isPaid ? "Paid" : "Not Paid"}
-              </span>
-              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <ActionButton
-                  variant="download"
-                  ariaLabel="Download invoice"
-                  onClick={() => {
-                    window.open(
-                      invoice.fileUrl,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                    markDownloaded("invoices", invoice.agencyId, [
-                      invoice.id,
-                    ]).catch(() => {});
-                  }}
-                />
-                {!isPaid && (
+            <AccordionItem
+              key={invoice.id}
+              value={invoice.id}
+              className="animate-cascade"
+              style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+              columns={[
+                <span className="tabular-nums">{idx + 1}</span>,
+                <span className="truncate">{invoice.fileName}</span>,
+                <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                  {invoice.agencyName || "—"}
+                </span>,
+                <span className="truncate text-sm font-medium">£{amount}</span>,
+                <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                  {sentOn}
+                </span>,
+                <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                  {dueOn}
+                </span>,
+                <span
+                  className={`truncate font-medium ${
+                    isPaid ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {isPaid ? "Paid" : "Not Paid"}
+                </span>,
+                <span className="flex flex-wrap items-center gap-2">
                   <ActionButton
-                    variant="paid"
-                    ariaLabel="Mark invoice as paid"
+                    variant="download"
+                    ariaLabel="Download invoice"
+                    onClick={() => {
+                      window.open(
+                        invoice.fileUrl,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                      markDownloaded("invoices", invoice.agencyId, [
+                        invoice.id,
+                      ]).catch(() => {});
+                    }}
+                  />
+                  {!isPaid && (
+                    <ActionButton
+                      variant="paid"
+                      ariaLabel="Mark invoice as paid"
+                      onClick={() =>
+                        setConfirmPaid({
+                          agencyId: invoice.agencyId,
+                          invoiceId: invoice.id,
+                          fileName: invoice.fileName,
+                          clientName: invoice.agencyName,
+                        })
+                      }
+                    />
+                  )}
+                  <ActionButton
+                    variant="delete"
+                    ariaLabel="Delete invoice"
                     onClick={() =>
-                      setConfirmPaid({
+                      setDeleteTarget({
                         agencyId: invoice.agencyId,
                         invoiceId: invoice.id,
                         fileName: invoice.fileName,
@@ -170,21 +185,13 @@ export const AdminInvoicesPage = () => {
                       })
                     }
                   />
-                )}
-                <ActionButton
-                  variant="delete"
-                  ariaLabel="Delete invoice"
-                  onClick={() =>
-                    setDeleteTarget({
-                      agencyId: invoice.agencyId,
-                      invoiceId: invoice.id,
-                      fileName: invoice.fileName,
-                      clientName: invoice.agencyName,
-                    })
-                  }
-                />
-              </span>
-            </>
+                </span>,
+              ]}
+            >
+              <div className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                Sent {sentOn} · Due {dueOn}
+              </div>
+            </AccordionItem>
           );
         }}
       />

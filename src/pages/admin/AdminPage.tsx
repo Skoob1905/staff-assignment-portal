@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { Plus } from "lucide-react";
 import {
+  AccordionItem,
   Button,
   DeleteButton,
   DialogContent,
@@ -266,7 +267,7 @@ export const AdminPage = () => {
   );
 
   return (
-    <div className="flex flex-1 flex-col space-y-4">
+    <div className="flex min-w-0 flex-1 flex-col space-y-4">
       <PaginatedFilterSection
         title="Users"
         items={logins}
@@ -291,7 +292,6 @@ export const AdminPage = () => {
         rightAccordionValue={rightValue}
         onRightAccordionChange={onRightChange}
         emptyMessage="No users created yet."
-        expandable={false}
         columnHeaders={[
           "Email",
           "Client",
@@ -309,7 +309,7 @@ export const AdminPage = () => {
             New Login
           </Button>
         }
-        renderItem={(user) => {
+        renderItem={(user, idx) => {
           const userRecord = user as {
             id: string;
             email?: string;
@@ -329,30 +329,41 @@ export const AdminPage = () => {
             userRecord.invitedByUid ||
             "";
           return (
-            <>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-[var(--foreground)]">
-                {userRecord.email || userRecord.id}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-[var(--muted-foreground)]">
-                {companyName}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-[var(--muted-foreground)]">
-                {invitedByEmail || "—"}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-[var(--muted-foreground)]">
-                {formatInvitedAt(userRecord.invitedAt)}
-              </span>
-              <span className="flex min-w-0 flex-1 items-center">
-                <DeleteButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteTarget(user);
-                  }}
-                >
-                  Revoke
-                </DeleteButton>
-              </span>
-            </>
+            <AccordionItem
+              key={userRecord.id}
+              value={userRecord.id}
+              className="animate-cascade"
+              style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+              columns={[
+                <span className="tabular-nums">{idx + 1}</span>,
+                <span className="truncate font-medium text-[var(--foreground)]">
+                  {userRecord.email || userRecord.id}
+                </span>,
+                <span className="truncate text-sm text-[var(--muted-foreground)]">
+                  {companyName}
+                </span>,
+                <span className="truncate text-sm text-[var(--muted-foreground)]">
+                  {invitedByEmail || "—"}
+                </span>,
+                <span className="truncate text-sm text-[var(--muted-foreground)]">
+                  {formatInvitedAt(userRecord.invitedAt)}
+                </span>,
+                <span className="flex items-center">
+                  <DeleteButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(user);
+                    }}
+                  >
+                    Revoke
+                  </DeleteButton>
+                </span>,
+              ]}
+            >
+              <div className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                Invited at {formatInvitedAt(userRecord.invitedAt)}
+              </div>
+            </AccordionItem>
           );
         }}
       />

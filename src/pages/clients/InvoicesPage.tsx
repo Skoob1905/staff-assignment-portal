@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { ActionButton } from "../../components/ui";
+import { AccordionItem, ActionButton } from "../../components/ui";
 import { PaginatedFilterSection } from "../../views/Table";
 import { useAuth } from "../../context/AuthProvider";
 import { useData } from "../../context/DataProvider";
@@ -48,7 +48,7 @@ export const InvoicesPage = () => {
   );
 
   return (
-    <div className="flex flex-1 flex-col space-y-4">
+    <div className="flex min-w-0 flex-1 flex-col space-y-4">
       <PaginatedFilterSection<InvoiceEntry>
         title="Invoices"
         items={pagedInvoices}
@@ -65,7 +65,6 @@ export const InvoicesPage = () => {
         onFiltersChange={() => {}}
         enableNameFilter={false}
         enableTagFilter={false}
-        expandable={false}
         columnHeaders={[
           "Name",
           "Amount",
@@ -75,56 +74,64 @@ export const InvoicesPage = () => {
           "Actions",
         ]}
         emptyMessage="No invoices found."
-        renderItem={(invoice) => {
+        renderItem={(invoice, idx) => {
           const isPaid = invoice.status === "paid";
           const amount = parseFloat(invoice.amountPayable).toFixed(2);
+          const sentOn = new Date(invoice.uploadedAt).toLocaleDateString(
+            "en-GB",
+            { day: "numeric", month: "short", year: "numeric" },
+          );
+          const dueOn = new Date(invoice.dueDate).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
 
           return (
-            <>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                {invoice.fileName}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium">
-                £{amount}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
-                {new Date(invoice.uploadedAt).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
-                {new Date(invoice.dueDate).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-              <span
-                className={`min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium ${
-                  isPaid ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {isPaid ? "Paid" : "Not Paid"}
-              </span>
-              <span className="flex min-w-0 flex-1 items-center gap-2">
-                <ActionButton
-                  variant="download"
-                  ariaLabel="Download invoice"
-                  onClick={() => {
-                    window.open(
-                      invoice.fileUrl,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                    markDownloaded("invoices", appUser?.agencyId ?? "", [
-                      invoice.id,
-                    ]).catch(() => {});
-                  }}
-                />
-              </span>
-            </>
+            <AccordionItem
+              key={invoice.id}
+              value={invoice.id}
+              className="animate-cascade"
+              style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+              columns={[
+                <span className="tabular-nums">{idx + 1}</span>,
+                <span className="truncate">{invoice.fileName}</span>,
+                <span className="truncate text-sm font-medium">£{amount}</span>,
+                <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                  {sentOn}
+                </span>,
+                <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                  {dueOn}
+                </span>,
+                <span
+                  className={`truncate font-medium ${
+                    isPaid ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {isPaid ? "Paid" : "Not Paid"}
+                </span>,
+                <span className="flex items-center gap-2">
+                  <ActionButton
+                    variant="download"
+                    ariaLabel="Download invoice"
+                    onClick={() => {
+                      window.open(
+                        invoice.fileUrl,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                      markDownloaded("invoices", appUser?.agencyId ?? "", [
+                        invoice.id,
+                      ]).catch(() => {});
+                    }}
+                  />
+                </span>,
+              ]}
+            >
+              <div className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                Sent {sentOn} · Due {dueOn}
+              </div>
+            </AccordionItem>
           );
         }}
       />

@@ -1,4 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useMemo,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { Filter, Loader2 } from "lucide-react";
 import { AccordionRoot } from "../../components/ui";
 import { FilterModal } from "./FilterModal";
@@ -164,6 +171,14 @@ export const PaginatedFilterSection = <T,>({
 
   const renderItems = () => {
     if (expandable) {
+      const decorate = (el: ReactNode): ReactNode =>
+        columnHeaders && isValidElement(el)
+          ? cloneElement(
+              el as ReactElement<{ columnHeaders?: ColumnHeader[] }>,
+              { columnHeaders },
+            )
+          : el;
+
       if (accordionType === "multiple") {
         return (
           <AccordionRoot
@@ -171,13 +186,13 @@ export const PaginatedFilterSection = <T,>({
             value={multiAccordionValue ?? []}
             onValueChange={onMultiAccordionChange ?? (() => {})}
           >
-            {items.map((item, idx) => renderItem(item, idx))}
+            {items.map((item, idx) => decorate(renderItem(item, idx)))}
           </AccordionRoot>
         );
       }
       return (
         <AccordionRoot type="single" collapsible>
-          {items.map((item, idx) => renderItem(item, idx))}
+          {items.map((item, idx) => decorate(renderItem(item, idx)))}
         </AccordionRoot>
       );
     }
@@ -202,7 +217,7 @@ export const PaginatedFilterSection = <T,>({
 
   return (
     <>
-      <div>
+      <div className="min-w-0">
         <PageTitle action={renderHeaderAction()}>
           {title} ({totalResults})
         </PageTitle>
@@ -219,10 +234,10 @@ export const PaginatedFilterSection = <T,>({
                 : emptyMessage || `Add some ${title.toLowerCase()} now!`}
             </Muted>
           ) : (
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4 pb-24 sm:pb-0">
               <div className="border-y border-[var(--border)]">
                 {columnHeaders && (
-                  <div className="flex items-center gap-3 border-b border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-foreground)] sm:px-4">
+                  <div className="hidden items-center gap-3 border-b border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-foreground)] sm:flex sm:px-4">
                     <span className="w-8 shrink-0 text-left">#</span>
                     {columnHeaders.map((header, i) => {
                       const label =
@@ -245,7 +260,7 @@ export const PaginatedFilterSection = <T,>({
                 )}
                 {renderItems()}
               </div>
-              <div className="px-4">
+              <div className="fixed inset-x-0 bottom-0 z-10 border-t border-[var(--border)] bg-[var(--muted)] px-4 pb-2 pt-2 sm:sticky sm:bottom-0 sm:inset-x-auto sm:z-10 sm:px-4 sm:pb-0 sm:pt-0">
                 <PaginationBar
                   currentPage={page + 1}
                   totalPages={totalPages}

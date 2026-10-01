@@ -22,7 +22,7 @@ export const AppLayout = () => {
       <div className="flex flex-1 min-h-0 gap-1 p-1.5">
         <Navbar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div className="flex min-h-0 flex-1 flex-col gap-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
           <header className="grid h-[72px] shrink-0 grid-cols-[1fr_auto_1fr] items-center rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-4 sm:px-6">
             <div className="flex items-center">
               <button
@@ -42,7 +42,7 @@ export const AppLayout = () => {
             </div>
           </header>
 
-          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-4 py-3 sm:py-6">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-4 py-3 sm:py-6">
             <Outlet />
           </main>
         </div>

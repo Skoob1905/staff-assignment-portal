@@ -10,15 +10,29 @@ export type AccordionColumn =
   | ReactNode
   | { node: ReactNode; className?: string };
 
+export type AccordionHeader = string | { label: string; className?: string };
+
 const isColumnConfig = (
   cell: AccordionColumn,
 ): cell is { node: ReactNode; className?: string } =>
   cell !== null && typeof cell === "object" && "node" in cell;
 
+const columnNode = (cell?: AccordionColumn): ReactNode =>
+  cell === undefined ? null : isColumnConfig(cell) ? cell.node : cell;
+
+const columnWidth = (cell?: AccordionColumn): string =>
+  isColumnConfig(cell) ? cell.className ?? "flex-1" : "flex-1";
+
+const headerLabel = (header?: AccordionHeader): string | null => {
+  if (header === undefined) return null;
+  return typeof header === "string" ? header : header.label;
+};
+
 export const AccordionItem = ({
   value,
   title,
   columns,
+  columnHeaders,
   children,
   actions,
   className,
@@ -27,54 +41,92 @@ export const AccordionItem = ({
   value: string;
   title?: ReactNode;
   columns?: AccordionColumn[];
+  columnHeaders?: AccordionHeader[];
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
   style?: React.CSSProperties;
-}) => (
-  <Accordion.Item
-    value={value}
-    className={`border-b border-[var(--border)]${className ? ` ${className}` : ""}`}
-    style={style}
-  >
-    <Accordion.Header className="group/header flex items-center">
-      <Accordion.Trigger className="flex w-full items-center justify-between gap-3 px-3 py-2 min-h-[3rem] text-left text-sm font-semibold text-[var(--foreground)] sm:px-4 sm:text-sm">
-        {columns ? (
-          <>
-            <span className="w-8 shrink-0 text-left text-[var(--muted-foreground)]">
-              {isColumnConfig(columns[0]) ? columns[0].node : columns[0]}
-            </span>
-            {columns.slice(1).map((cell, i) => {
-              const node = isColumnConfig(cell) ? cell.node : cell;
-              const width = isColumnConfig(cell)
-                ? cell.className ?? "flex-1"
-                : "flex-1";
-              return (
-                <span
-                  key={i}
-                  className={`min-w-0 overflow-hidden text-left text-ellipsis whitespace-nowrap ${width}`}
-                >
-                  {node}
+}) => {
+  const cells = columns ?? [];
+
+  return (
+    <Accordion.Item
+      value={value}
+      className={`min-w-0 border-b border-[var(--border)]${className ? ` ${className}` : ""}`}
+      style={style}
+    >
+      <Accordion.Header className="group/header flex min-w-0 items-center">
+        <Accordion.Trigger className="flex w-full min-w-0 items-center justify-between gap-3 px-3 py-2 min-h-[3rem] text-left text-sm font-semibold text-[var(--foreground)] sm:px-4 sm:text-sm">
+          {columns ? (
+            <>
+              {/* Desktop — full row of columns */}
+              <span className="hidden min-w-0 flex-1 items-center gap-3 sm:flex">
+                <span className="w-8 shrink-0 text-left text-[var(--muted-foreground)]">
+                  {columnNode(cells[0])}
                 </span>
+                {cells.slice(1).map((cell, i) => (
+                  <span
+                    key={i}
+                    className={`min-w-0 overflow-hidden text-left text-ellipsis whitespace-nowrap ${columnWidth(cell)}`}
+                  >
+                    {columnNode(cell)}
+                  </span>
+                ))}
+              </span>
+
+              {/* Mobile — index + name only */}
+              <span className="flex min-w-0 flex-1 items-center gap-2 sm:hidden">
+                <span className="w-8 shrink-0 text-left text-[var(--muted-foreground)]">
+                  {columnNode(cells[0])}
+                </span>
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                  {columnNode(cells[1])}
+                </span>
+              </span>
+            </>
+          ) : (
+            <span className="min-w-0 flex-1 font-semibold">{title}</span>
+          )}
+          {actions && (
+            <div
+              className="hidden sm:flex shrink-0 items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {actions}
+            </div>
+          )}
+          <ChevronDown className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+        </Accordion.Trigger>
+      </Accordion.Header>
+      <Accordion.Content className="w-0 min-w-full overflow-hidden overflow-x-auto data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up px-3 pb-3 text-[11px] text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
+        {/* Mobile — the rest of the columns (and actions) live here */}
+        {(cells.length > 2 || actions) && (
+          <div className="mb-2 flex flex-col gap-1 sm:hidden">
+            {cells.slice(2).map((cell, i) => {
+              const label = headerLabel(columnHeaders?.[i + 1]);
+              return (
+                <div key={i} className="flex gap-2">
+                  {label && (
+                    <span className="shrink-0 font-medium text-[var(--foreground)]">
+                      {label}:
+                    </span>
+                  )}
+                  <span className="min-w-0 break-words">{columnNode(cell)}</span>
+                </div>
               );
             })}
-          </>
-        ) : (
-          <span className="min-w-0 flex-1 font-semibold">{title}</span>
-        )}
-        {actions && (
-          <div
-            className="hidden sm:flex shrink-0 items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {actions}
+            {actions && (
+              <div
+                className="mt-1 flex flex-wrap items-center gap-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {actions}
+              </div>
+            )}
           </div>
         )}
-        <ChevronDown className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
-      </Accordion.Trigger>
-    </Accordion.Header>
-    <Accordion.Content className="w-0 min-w-full overflow-hidden overflow-x-auto data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up px-3 pb-3 text-[11px] text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
-      {children}
-    </Accordion.Content>
-  </Accordion.Item>
-);
+        {children}
+      </Accordion.Content>
+    </Accordion.Item>
+  );
+};
