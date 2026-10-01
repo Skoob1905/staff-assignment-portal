@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { httpsCallable } from "firebase/functions";
-import { ActionButton, Button, Card, DialogContent, DialogRoot, DialogTitle, DownloadButton } from "./ui";
-import { PageTitle } from "./PageTitle";
+import { AccordionItem, ActionButton, Button, DialogContent, DialogRoot, DialogTitle, DownloadButton } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { functions } from "../services/firebase";
 import { formatInvitedAt } from "../utils/date";
 import { useAppStore, type CsvImport } from "../stores/appStore";
 import { useFileStaffStore } from "../stores/fileStaffStore";
-import { BodyMedium, Caption, Muted } from "../config/typography";
+import { Muted } from "../config/typography";
+import { PaginatedFilterSection } from "../views/Table";
+import { usePaginationParams } from "../hooks/usePaginationParams";
+import { emptyFilters } from "../types/domain";
 
 type CsvRow = Record<string, string>;
 
@@ -80,6 +82,13 @@ export const ImportHistory = ({
   const loaded = useAppStore((s) => s.importHistoryCacheLoaded[cacheKey]);
   const loadImportHistory = useAppStore((s) => s.loadImportHistory);
   const removeImportEntry = useAppStore((s) => s.removeImportEntry);
+
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const totalPages = Math.max(1, Math.ceil(history.length / pageSize));
+  const pagedHistory = useMemo(
+    () => history.slice(page * pageSize, (page + 1) * pageSize),
+    [history, page, pageSize],
+  );
 
   useEffect(() => {
     if (deleteLoading) {
@@ -199,23 +208,52 @@ export const ImportHistory = ({
 
   return (
     <>
-      <PageTitle>Import History</PageTitle>
-      <Card className="mt-1.5 sm:mt-3">
-        {loading ? (
-          <Muted className="mt-3">
-            Loading...
-          </Muted>
-        ) : history.length === 0 ? (
-          <Muted className="mt-3">
-            No imports yet.
-          </Muted>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {history.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.04)] px-3 py-2"
-              >
+      <PaginatedFilterSection<CsvImport>
+        title="Import History"
+        items={pagedHistory}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        totalResults={history.length}
+        pageSize={pageSize}
+        onPrevPage={() => setPage(Math.max(0, page - 1))}
+        onNextPage={() => setPage(page + 1)}
+        onGoToPage={setPage}
+        onPageSizeChange={setPageSize}
+        filters={emptyFilters}
+        onFiltersChange={() => {}}
+        enableNameFilter={false}
+        enableTagFilter={false}
+        enableAgencyFilter={false}
+        columnHeaders={[
+          "File Name",
+          "Records",
+          "Imported By",
+          "Imported At",
+          "Actions",
+        ]}
+        emptyMessage="No imports yet."
+        renderItem={(entry, idx) => (
+          <AccordionItem
+            key={entry.id}
+            value={entry.id}
+            className="animate-cascade"
+            style={{ animationDelay: `${idx * 5}ms` } as CSSProperties}
+            columns={[
+              <span className="tabular-nums">{idx + 1}</span>,
+              <span className="truncate">{entry.fileName}</span>,
+              <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {entry.recordCount}
+              </span>,
+              <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {entry.importedByEmail ?? "Unknown"}
+              </span>,
+              <span className="truncate text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {entry.importedAt
+                  ? formatInvitedAt(entry.importedAt)
+                  : "Unknown date"}
+              </span>,
+              <span className="flex items-center gap-2">
                 <ActionButton
                   variant="delete"
                   size="md"
@@ -228,26 +266,21 @@ export const ImportHistory = ({
                     size="md"
                     href={entry.fileUrl}
                     ariaLabel="Download CSV"
-                    className="ml-1.5"
                   />
                 ) : null}
-                <div className="ml-2 min-w-0 flex-1">
-                  <BodyMedium className="truncate">
-                    {entry.fileName}
-                  </BodyMedium>
-                  <Caption>
-                    {entry.recordCount} record(s) &middot;{" "}
-                    {entry.importedByEmail ?? "Unknown"} &middot;{" "}
-                    {entry.importedAt
-                      ? formatInvitedAt(entry.importedAt)
-                      : "Unknown date"}
-                  </Caption>
-                </div>
-              </div>
-            ))}
-          </div>
+              </span>,
+            ]}
+          >
+            <div className="text-xs text-[var(--muted-foreground)] sm:text-sm">
+              {entry.recordCount} record(s) &middot;{" "}
+              {entry.importedByEmail ?? "Unknown"} &middot;{" "}
+              {entry.importedAt
+                ? formatInvitedAt(entry.importedAt)
+                : "Unknown date"}
+            </div>
+          </AccordionItem>
         )}
-      </Card>
+      />
 
       <DialogRoot
         open={deleteTarget !== null}

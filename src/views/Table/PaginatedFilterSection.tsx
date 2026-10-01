@@ -186,13 +186,13 @@ export const PaginatedFilterSection = <T,>({
             value={multiAccordionValue ?? []}
             onValueChange={onMultiAccordionChange ?? (() => {})}
           >
-            {items.map((item, idx) => decorate(renderItem(item, idx)))}
+            {items.map((item, idx) => decorate(renderItem(item, page * pageSize + idx)))}
           </AccordionRoot>
         );
       }
       return (
         <AccordionRoot type="single" collapsible>
-          {items.map((item, idx) => decorate(renderItem(item, idx)))}
+          {items.map((item, idx) => decorate(renderItem(item, page * pageSize + idx)))}
         </AccordionRoot>
       );
     }
@@ -207,7 +207,7 @@ export const PaginatedFilterSection = <T,>({
             <span className="w-8 shrink-0 text-left text-xs tabular-nums text-[var(--muted-foreground)]">
               {page * pageSize + idx + 1}
             </span>
-            {renderItem(item, idx)}
+            {renderItem(item, page * pageSize + idx)}
             <span className="w-4 shrink-0" />
           </div>
         ))}
@@ -262,7 +262,7 @@ export const PaginatedFilterSection = <T,>({
                 )}
                 {renderItems()}
               </div>
-              <div className="shrink-0 bg-[var(--card)] px-4">
+              <div className="shrink-0 bg-[var(--header-bg)] px-4 py-2">
                 <PaginationBar
                   currentPage={page + 1}
                   totalPages={totalPages}
