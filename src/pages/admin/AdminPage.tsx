@@ -267,7 +267,7 @@ export const AdminPage = () => {
   );
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       <PaginatedFilterSection
         title="Users"
         items={logins}

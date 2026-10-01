@@ -132,7 +132,7 @@ export const PaginatedFilterSection = <T,>({
         includeName: enableNameFilter,
         includeTags: enableTagFilter,
         includeAgencies: enableAgencyFilter,
-      },
+      }
     );
   }, [
     filters,
@@ -175,7 +175,7 @@ export const PaginatedFilterSection = <T,>({
         columnHeaders && isValidElement(el)
           ? cloneElement(
               el as ReactElement<{ columnHeaders?: ColumnHeader[] }>,
-              { columnHeaders },
+              { columnHeaders }
             )
           : el;
 
@@ -217,14 +217,16 @@ export const PaginatedFilterSection = <T,>({
 
   return (
     <>
-      <div className="min-w-0">
-        <PageTitle action={renderHeaderAction()}>
-          {title} ({totalResults})
-        </PageTitle>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0">
+          <PageTitle action={renderHeaderAction()}>
+            {title} ({totalResults})
+          </PageTitle>
+        </div>
 
-        <div className="mt-1.5 sm:mt-3">
+        <div className="mt-1.5 flex min-h-0 flex-1 flex-col sm:mt-3">
           {loading && items.length === 0 ? (
-            <div className="flex justify-center py-12">
+            <div className="flex flex-1 justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
             </div>
           ) : items.length === 0 ? (
@@ -234,8 +236,8 @@ export const PaginatedFilterSection = <T,>({
                 : emptyMessage || `Add some ${title.toLowerCase()} now!`}
             </Muted>
           ) : (
-            <div className="min-w-0 space-y-4 pb-24 sm:pb-0">
-              <div className="border-y border-[var(--border)]">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto border-y border-[var(--border)]">
                 {columnHeaders && (
                   <div className="hidden items-center gap-3 border-b border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-foreground)] sm:flex sm:px-4">
                     <span className="w-8 shrink-0 text-left">#</span>
@@ -260,7 +262,7 @@ export const PaginatedFilterSection = <T,>({
                 )}
                 {renderItems()}
               </div>
-              <div className="fixed inset-x-0 bottom-0 z-10 border-t border-[var(--border)] bg-[var(--muted)] px-4 pb-2 pt-2 sm:sticky sm:bottom-0 sm:inset-x-auto sm:z-10 sm:px-4 sm:pb-0 sm:pt-0">
+              <div className="shrink-0 bg-[var(--card)] px-4">
                 <PaginationBar
                   currentPage={page + 1}
                   totalPages={totalPages}

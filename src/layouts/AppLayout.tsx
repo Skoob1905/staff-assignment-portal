@@ -42,7 +42,7 @@ export const AppLayout = () => {
             </div>
           </header>
 
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-4 py-3 sm:py-6">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-2 py-2 sm:py-4">
             <Outlet />
           </main>
         </div>
