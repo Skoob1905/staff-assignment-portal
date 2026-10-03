@@ -1,15 +1,12 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { AccordionItem } from "../../components/ui";
 import { useAuth } from "../../context/AuthProvider";
 import { useAppStore } from "../../stores/appStore";
 import { formatInvitedAt } from "../../utils/date";
-import { PaginatedFilterSection, type ColumnHeader } from "./PaginatedFilterSection";
+import {
+  PaginatedFilterSection,
+  type ColumnHeader,
+} from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
 import { usePaginationParams } from "../../hooks/usePaginationParams";
@@ -73,7 +70,7 @@ export const TableView = ({
   const assignedToId = targetAgencyId || appUser?.agencyId || "";
   const staffKeyMap = useMemo<FilterKeyMap>(
     () => ({ tag: "tags", agency: "metadata.assignedToId" }),
-    [],
+    []
   );
 
   const tagsMap = useMemo(() => {
@@ -94,7 +91,7 @@ export const TableView = ({
 
   const facets = useMemo(
     () => buildFacetRequestFields(staffKeyMap),
-    [staffKeyMap],
+    [staffKeyMap]
   );
 
   const { items, loading, refresh, totalPages, totalResults, facetCounts } =
@@ -144,7 +141,7 @@ export const TableView = ({
       setPage(0);
       setFilters(newFilters);
     },
-    [setFilters, setPage],
+    [setFilters, setPage]
   );
 
   const defaultRenderItem = useCallback(
@@ -153,7 +150,7 @@ export const TableView = ({
       const niNumber = getStaffNINumber(member);
       const jobTitle = findValueByNormalizedKey(
         member as unknown as Record<string, unknown>,
-        "job title",
+        "job title"
       );
       return (
         <AccordionItem
@@ -201,7 +198,11 @@ export const TableView = ({
                   key={`${member.id}::${entry.fileName}`}
                   title="CV"
                   className="flex items-center animate-cascade"
-                  style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
+                  style={
+                    {
+                      animationDelay: `${(idx + 1) * 12}ms`,
+                    } as React.CSSProperties
+                  }
                   value={
                     <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                       <span className="text-[var(--muted-foreground)]">
@@ -234,7 +235,7 @@ export const TableView = ({
                     key !== "sortableName" &&
                     value !== "" &&
                     value !== null &&
-                    value !== undefined,
+                    value !== undefined
                 )
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([key, value], idx) => {
@@ -264,12 +265,12 @@ export const TableView = ({
         </AccordionItem>
       );
     },
-    [tagsMap],
+    [tagsMap]
   );
 
   return (
     <PaginatedFilterSection
-      title={isClient ? "Assigned Staff" : "Staff"}
+      title={"Staff"}
       filterKeys={staffKeyMap}
       items={items}
       loading={loading}

@@ -58,7 +58,7 @@ export const Navbar = ({ open, onClose }: NavbarProps) => {
             className="w-full rounded-lg"
             onClick={() => void logoutUser()}
           >
-            Logout
+            <span className="text-sm sm:text-[11px] md:text-sm">Logout</span>
           </Button>
           <p className="mt-1.5 text-center text-[11px] text-[var(--muted-foreground)]">
             v{__APP_VERSION__}
