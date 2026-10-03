@@ -137,22 +137,22 @@ export const PaginatedFilterSection = <T,>({
   ]);
 
   const renderHeaderAction = () => (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
       {hasAnyFilter && (totalResults > 0 || activeFilterCount > 0) && (
         <button
           type="button"
           onClick={() => setShowFilterModal(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]"
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]"
         >
-          <Filter className="h-3.5 w-3.5" />
-          Filter
+          <Filter className="h-3.5 w-3.5 shrink-0" />
+          <span className="shrink-0">Filter</span>
           {activeFilterCount > 0 && (
-            <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-bold text-white">
+            <span className="ml-0.5 flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-bold text-white">
               {activeFilterCount}
             </span>
           )}
           {filterSummary && (
-            <span className="max-w-[240px] truncate text-[var(--muted-foreground)]">
+            <span className="min-w-0 max-w-[240px] truncate text-[var(--muted-foreground)]">
               {filterSummary}
             </span>
           )}
