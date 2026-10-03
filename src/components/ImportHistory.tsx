@@ -7,6 +7,7 @@ import { functions } from "../services/firebase";
 import { formatInvitedAt } from "../utils/date";
 import { useAppStore, type CsvImport } from "../stores/appStore";
 import { useFileStaffStore } from "../stores/fileStaffStore";
+import { Metadata } from "./Metadata";
 import { Muted } from "../config/typography";
 import { PaginatedFilterSection } from "../views/Table";
 import { usePaginationParams } from "../hooks/usePaginationParams";
@@ -271,12 +272,20 @@ export const ImportHistory = ({
               </span>,
             ]}
           >
-            <div className="text-xs text-[var(--muted-foreground)] sm:text-sm">
-              {entry.recordCount} record(s) &middot;{" "}
-              {entry.importedByEmail ?? "Unknown"} &middot;{" "}
-              {entry.importedAt
-                ? formatInvitedAt(entry.importedAt)
-                : "Unknown date"}
+            <div className="flex flex-col gap-1">
+              <Metadata title="Records" value={entry.recordCount} />
+              <Metadata
+                title="Imported By"
+                value={entry.importedByEmail ?? "Unknown"}
+              />
+              <Metadata
+                title="Imported At"
+                value={
+                  entry.importedAt
+                    ? formatInvitedAt(entry.importedAt)
+                    : "Unknown date"
+                }
+              />
             </div>
           </AccordionItem>
         )}

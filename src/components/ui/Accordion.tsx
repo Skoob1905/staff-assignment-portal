@@ -10,8 +10,6 @@ export type AccordionColumn =
   | ReactNode
   | { node: ReactNode; className?: string };
 
-export type AccordionHeader = string | { label: string; className?: string };
-
 const isColumnConfig = (
   cell: AccordionColumn,
 ): cell is { node: ReactNode; className?: string } =>
@@ -23,16 +21,10 @@ const columnNode = (cell?: AccordionColumn): ReactNode =>
 const columnWidth = (cell?: AccordionColumn): string =>
   isColumnConfig(cell) ? cell.className ?? "flex-1" : "flex-1";
 
-const headerLabel = (header?: AccordionHeader): string | null => {
-  if (header === undefined) return null;
-  return typeof header === "string" ? header : header.label;
-};
-
 export const AccordionItem = ({
   value,
   title,
   columns,
-  columnHeaders,
   children,
   actions,
   className,
@@ -41,7 +33,6 @@ export const AccordionItem = ({
   value: string;
   title?: ReactNode;
   columns?: AccordionColumn[];
-  columnHeaders?: AccordionHeader[];
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -99,30 +90,12 @@ export const AccordionItem = ({
         </Accordion.Trigger>
       </Accordion.Header>
       <Accordion.Content className="w-0 min-w-full overflow-hidden overflow-x-auto data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up px-3 pb-3 text-[11px] text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
-        {/* Mobile — the rest of the columns (and actions) live here */}
-        {(cells.length > 2 || actions) && (
-          <div className="mb-2 flex flex-col gap-1 sm:hidden">
-            {cells.slice(2).map((cell, i) => {
-              const label = headerLabel(columnHeaders?.[i + 1]);
-              return (
-                <div key={i} className="flex gap-2">
-                  {label && (
-                    <span className="shrink-0 font-medium text-[var(--foreground)]">
-                      {label}:
-                    </span>
-                  )}
-                  <span className="min-w-0 break-words">{columnNode(cell)}</span>
-                </div>
-              );
-            })}
-            {actions && (
-              <div
-                className="mt-1 flex flex-wrap items-center gap-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {actions}
-              </div>
-            )}
+        {actions && (
+          <div
+            className="mb-2 flex flex-wrap items-center gap-2 sm:hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {actions}
           </div>
         )}
         {children}

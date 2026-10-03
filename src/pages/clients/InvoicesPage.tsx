@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { AccordionItem, ActionButton } from "../../components/ui";
 import { PaginatedFilterSection } from "../../views/Table";
+import { Metadata } from "../../components/Metadata";
 import { useAuth } from "../../context/AuthProvider";
 import { useData } from "../../context/DataProvider";
 import { usePaginationParams } from "../../hooks/usePaginationParams";
@@ -128,8 +129,20 @@ export const InvoicesPage = () => {
                 </span>,
               ]}
             >
-              <div className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                Sent {sentOn} · Due {dueOn}
+              <div className="flex flex-col gap-1">
+                <Metadata title="Amount" value={`£${amount}`} />
+                <Metadata title="Sent On" value={sentOn} />
+                <Metadata title="Due On" value={dueOn} />
+                <Metadata
+                  title="Status"
+                  value={
+                    <span
+                      className={isPaid ? "text-green-600" : "text-red-600"}
+                    >
+                      {isPaid ? "Paid" : "Not Paid"}
+                    </span>
+                  }
+                />
               </div>
             </AccordionItem>
           );

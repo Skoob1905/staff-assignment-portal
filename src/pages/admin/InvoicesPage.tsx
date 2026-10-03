@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
+import { Metadata } from "../../components/Metadata";
 import { PaginatedFilterSection } from "../../views/Table";
 import { useToast } from "../../context/ToastProvider";
 import { useData } from "../../context/DataProvider";
@@ -188,8 +189,21 @@ export const AdminInvoicesPage = () => {
                 </span>,
               ]}
             >
-              <div className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                Sent {sentOn} · Due {dueOn}
+              <div className="flex flex-col gap-1">
+                <Metadata title="Client" value={invoice.agencyName || "—"} />
+                <Metadata title="Amount" value={`£${amount}`} />
+                <Metadata title="Sent On" value={sentOn} />
+                <Metadata title="Due On" value={dueOn} />
+                <Metadata
+                  title="Status"
+                  value={
+                    <span
+                      className={isPaid ? "text-green-600" : "text-red-600"}
+                    >
+                      {isPaid ? "Paid" : "Not Paid"}
+                    </span>
+                  }
+                />
               </div>
             </AccordionItem>
           );

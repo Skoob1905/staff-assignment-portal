@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
+import { Metadata } from "../../components/Metadata";
 import { useAppStore } from "../../stores/appStore";
 import { functions } from "../../services/firebase";
 import { formatInvitedAt } from "../../utils/date";
@@ -360,8 +361,13 @@ export const AdminPage = () => {
                 </span>,
               ]}
             >
-              <div className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                Invited at {formatInvitedAt(userRecord.invitedAt)}
+              <div className="flex flex-col gap-1">
+                <Metadata title="Client" value={companyName} />
+                <Metadata title="Invited By" value={invitedByEmail || "—"} />
+                <Metadata
+                  title="Invited At"
+                  value={formatInvitedAt(userRecord.invitedAt)}
+                />
               </div>
             </AccordionItem>
           );

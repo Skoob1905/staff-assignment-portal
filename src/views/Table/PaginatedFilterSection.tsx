@@ -1,11 +1,4 @@
-import {
-  cloneElement,
-  isValidElement,
-  useMemo,
-  useState,
-  type ReactElement,
-  type ReactNode,
-} from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Filter, Loader2 } from "lucide-react";
 import { AccordionRoot } from "../../components/ui";
 import { FilterModal } from "./FilterModal";
@@ -171,14 +164,6 @@ export const PaginatedFilterSection = <T,>({
 
   const renderItems = () => {
     if (expandable) {
-      const decorate = (el: ReactNode): ReactNode =>
-        columnHeaders && isValidElement(el)
-          ? cloneElement(
-              el as ReactElement<{ columnHeaders?: ColumnHeader[] }>,
-              { columnHeaders }
-            )
-          : el;
-
       if (accordionType === "multiple") {
         return (
           <AccordionRoot
@@ -186,13 +171,13 @@ export const PaginatedFilterSection = <T,>({
             value={multiAccordionValue ?? []}
             onValueChange={onMultiAccordionChange ?? (() => {})}
           >
-            {items.map((item, idx) => decorate(renderItem(item, page * pageSize + idx)))}
+            {items.map((item, idx) => renderItem(item, page * pageSize + idx))}
           </AccordionRoot>
         );
       }
       return (
         <AccordionRoot type="single" collapsible>
-          {items.map((item, idx) => decorate(renderItem(item, page * pageSize + idx)))}
+          {items.map((item, idx) => renderItem(item, page * pageSize + idx))}
         </AccordionRoot>
       );
     }
