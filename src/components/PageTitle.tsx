@@ -11,10 +11,14 @@ export const PageTitle = ({
   children: ReactNode;
   action?: ReactNode;
 }) => (
-  <div className="flex min-h-[2.25rem] items-center justify-between px-4">
-    <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)]">
+  <div className="flex min-h-[2.25rem] items-center justify-between gap-2 px-4">
+    <h2 className="shrink-0 text-base sm:text-lg font-bold text-[var(--foreground)]">
       {children}
     </h2>
-    {action ? <div className="flex items-center gap-2">{action}</div> : null}
+    {action ? (
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+        {action}
+      </div>
+    ) : null}
   </div>
 );

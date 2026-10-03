@@ -44,7 +44,7 @@ export const SupportPage = () => {
   const remaining = MAX_CHARS - message.length;
 
   return (
-    <div className="flex flex-1 flex-col space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       <Content title="Got a question?">
         <div className="mb-2">
           <Body>Send us a message and we'll get back to you.</Body>
